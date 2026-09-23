@@ -7,8 +7,30 @@
   xsession.windowManager.command = ''
     exec ${config.programs.emacs.finalPackage}/bin/emacs \
       --eval '(progn (require (quote exwm)) (exwm-wm-mode))'
-    '';                                
-  
+    '';
+
+  home.packages = [
+    (pkgs.writeShellScriptBin "eww-browser" ''
+    exec ${config.programs.emacs.finalPackage}/bin/emacsclient \
+      --eval "(eww-open-file \"$1\")"
+  '')
+  ];
+
+  home.sessionVariables = {
+    BROWSER = "eww-browser";
+  };
+  # home.packages = [
+  #   (pkgs.writeShellScriptBin "eww-browser" ''
+  #   exec ${config.programs.emacs.finalPackage}/bin/emacsclient \
+  #     --eval "(eww-open-file \"$1\")"
+  # '')
+  # ];
+
+  # home.sessionVariables = {
+  #   BROWSER = "eww-browser";
+  # };
+
+
   #  xsession.windowManager.exwm = {
   #   enable = true;
 
