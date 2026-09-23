@@ -91,6 +91,7 @@
 
     extraPackages = epkgs: [
       epkgs.nix-mode
+      epkgs.magit 
     ];
   };
 
