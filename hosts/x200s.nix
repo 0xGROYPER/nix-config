@@ -6,7 +6,7 @@
 
   xsession.windowManager.command = ''
     exec ${config.programs.emacs.finalPackage}/bin/emacs \
-      --eval '(progn (require (quote exwm)) (exwm-enable))'
+      --eval '(progn (require (quote exwm)) (exwm-wm-mode))'
     '';                                
   
   #  xsession.windowManager.exwm = {
