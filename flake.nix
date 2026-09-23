@@ -1,9 +1,9 @@
 {
-  description = "Home Manager configuration of daws";
+  description = "Home Manager configuration";
 
   inputs = {
-    # Specify the source of Home Manager and Nixpkgs.
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -13,22 +13,43 @@
   outputs =
     { nixpkgs, home-manager, ... }:
     let
-      system = "x86_64-linux";
-      pkgs = nixpkgs.legacyPackages.${system};
+      mkHome =
+        {
+          system,
+          username,
+          homeDirectory,
+          hostModule,
+        }:
+        home-manager.lib.homeManagerConfiguration {
+          pkgs = nixpkgs.legacyPackages.${system};
+
+          modules = [
+            ./home.nix
+            hostModule
+
+            {
+              home.username = username;
+              home.homeDirectory = homeDirectory;
+            }
+          ];
+        };
     in
     {
-      homeConfigurations."daws" = home-manager.lib.homeManagerConfiguration {
-        inherit pkgs;
+      homeConfigurations = {
+        "daws@x200s" = mkHome {
+          system = "x86_64-linux";
+          username = "daws";
+          homeDirectory = "/home/daws";
+          hostModule = ./hosts/x200s.nix;
+        };
 
-        # Specify your home configuration modules here, for example,
-        # the path to your home.nix.
-        modules = [
-          ./home.nix
-          ./hosts/x200s.nix 
-        ];
-
-        # Optionally use extraSpecialArgs
-        # to pass through arguments to home.nix
+        # Change to x86_64-darwin later if the Mac is Intel.
+        "daws@mac" = mkHome {
+          system = "aarch64-darwin";
+          username = "daws";
+          homeDirectory = "/Users/daws";
+          hostModule = ./hosts/mac.nix;
+        };
       };
     };
 }

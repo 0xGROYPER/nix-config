@@ -33,7 +33,6 @@
     #   echo "Hello, ${config.home.username}!"
     # '')
     pkgs.tree
-    pkgs.gh
   ];
 
   # Home Manager is pretty good at managing dotfiles. The primary way to manage
@@ -83,6 +82,16 @@
       };
     };
   };
+
+
+  programs.gh = {
+    enable = true;
+
+    settings = {
+      git_protocol = "https"; # change to ssh later 
+    };
+  };
+
   
 
   programs.emacs = {
