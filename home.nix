@@ -85,5 +85,15 @@
     };
   };
   
+
+  programs.emacs = {
+    enable = true;
+
+    extraPackages = epkgs: [
+      epkgs.nix-mode
+    ];
+  };
+
+  xdg.configFile."emacs".source = ./emacs;
   
 }
