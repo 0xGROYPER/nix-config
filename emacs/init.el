@@ -11,3 +11,6 @@
 
 (use-package markdown-mod e
   :mode "\\.md\\'")
+
+(use-package gptel
+  :commands (gptel gptel-send gptel-menu))
