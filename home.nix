@@ -109,6 +109,7 @@
       epkgs.rust-mode
       epkgs.tree-sitter-langs
       epkgs.markdown-mode
+      # epkgs.treesit-grammars.with-rust-grammar
     ] ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
       epkgs.exwm
     ];
