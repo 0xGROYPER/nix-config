@@ -8,3 +8,6 @@
 
 (unless (server-running-p)
   (server-start))
+
+(use-package markdown-mod e
+  :mode "\\.md\\'")

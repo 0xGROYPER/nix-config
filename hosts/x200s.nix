@@ -12,13 +12,15 @@
   home.packages = [
     (pkgs.writeShellScriptBin "eww-browser" ''
     exec ${config.programs.emacs.finalPackage}/bin/emacsclient \
-      --eval "(eww-open-file \"$1\")"
+      --eval "(eww \"$1\")"
   '')
+    pkgs.stdenv.cc
   ];
 
   home.sessionVariables = {
     BROWSER = "eww-browser";
   };
+
   # home.packages = [
   #   (pkgs.writeShellScriptBin "eww-browser" ''
   #   exec ${config.programs.emacs.finalPackage}/bin/emacsclient \

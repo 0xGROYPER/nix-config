@@ -99,7 +99,8 @@
 
     extraPackages = epkgs: [
       epkgs.nix-mode
-      epkgs.magit 
+      epkgs.magit
+      epkgs.markdown-mode
     ] ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
       epkgs.exwm
     ];
