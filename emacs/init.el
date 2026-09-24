@@ -9,7 +9,7 @@
 (unless (server-running-p)
   (server-start))
 
-(use-package markdown-mod e
+(use-package markdown-mode
   :mode "\\.md\\'")
 
 (use-package gptel

@@ -33,6 +33,11 @@
     #   echo "Hello, ${config.home.username}!"
     # '')
     pkgs.tree
+    pkgs.cargo
+    pkgs.rustc
+    pkgs.rust-analyzer
+    pkgs.rustfmt
+    pkgs.clippy 
   ];
 
   # Home Manager is pretty good at managing dotfiles. The primary way to manage
@@ -101,6 +106,8 @@
       epkgs.nix-mode
       epkgs.magit
       epkgs.gptel
+      epkgs.rust-mode
+      epkgs.tree-sitter-langs
       epkgs.markdown-mode
     ] ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
       epkgs.exwm
