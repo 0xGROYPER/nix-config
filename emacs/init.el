@@ -4,7 +4,7 @@
 (use-package magit
   :commands magit-status)
 
-(require 'sever)
+(require 'server)
 
 (unless (server-running-p)
   (server-start))
