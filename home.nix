@@ -32,12 +32,23 @@
     # (pkgs.writeShellScriptBin "my-hello" ''
     #   echo "Hello, ${config.home.username}!"
     # '')
+
+    # cli tools 
     pkgs.tree
+
+    # rust dev stuff 
     pkgs.cargo
     pkgs.rustc
     pkgs.rust-analyzer
     pkgs.rustfmt
-    pkgs.clippy 
+    pkgs.clippy
+
+    # ricer stuff 
+    pkgs.screenfetch
+    pkgs.maim
+    pkgs.ffmpeg
+    pkgs.xrandr
+
   ];
 
   # Home Manager is pretty good at managing dotfiles. The primary way to manage
@@ -54,6 +65,7 @@
     #   org.gradle.daemon.idletimeout=3600000
     # '';
     ".ssh/config".source = ./ssh/config;
+    # ".emacs.d".source = ./emacs;
   };
 
   # Home Manager can also manage your environment variables through
@@ -107,6 +119,7 @@
       epkgs.nix-mode
       epkgs.magit
       epkgs.gptel
+      epkgs.gptel-agent
       epkgs.rust-mode
       epkgs.tree-sitter-langs
       epkgs.markdown-mode

@@ -6,6 +6,7 @@
 
   xsession.windowManager.command = ''
     exec ${config.programs.emacs.finalPackage}/bin/emacs \
+      --init-directory "$HOME/.config/emacs" \
       --eval '(progn (require (quote exwm)) (exwm-wm-mode))'
     '';
 

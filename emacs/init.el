@@ -1,5 +1,10 @@
-;; Emacs source init.el file
-;; Activ file is under ~/.config/emacs/
+;;; init.el --- Emacs configuration -*- lexical-binding: t; -*-
+
+
+(tool-bar-mode -1)
+(scroll-bar-mode -1)
+(menu-bar-mode -1)
+
 
 (use-package nix-mode
   :mode "\\.nix\\'")
@@ -21,14 +26,43 @@
 (use-package rust-mode
   :mode "\\.rs\\'")
 
+;; (use-package gptel
+;;   :config
+;;   (require 'gptel-openai-oauth)
+;;   (setq gptel-openai-oauth-login-method 'device
+;;         gptel-model 'gpt-5.6-luna
+;;         gptel-backend
+;;         (gptel-make-openai-oauth "OpenAI-sub")))
+
+;; (use-package gptel
+;;   :demand t
+;;   :commands (gptel gptel-send gptel-menu)
+;;   :config
+;;   (require 'gptel-openai-oauth)
+;;   (setq gptel-model 'gpt-5.6-luna
+;;         gptel-openai-oauth-login-method 'device
+;;         gptel-backend
+;;         (gptel-make-openai-oauth "OpenAI-sub")))
+
 (use-package gptel
+  :ensure nil
+  :demand t
   :config
   (require 'gptel-openai-oauth)
-  (setq gptel-openai-oauth-login-method 'device
-        gptel-model 'gpt-5.6-luna
+  (setq gptel--openai-oauth-token-file
+        (expand-file-name
+         "gptel-openai"
+         (or (getenv "XDG_DATA_HOME")
+             (expand-file-name "~/.local/share"))))
+  (setq gptel-model 'gpt-5.6-luna
+        gptel-openai-oauth-login-method 'device
         gptel-backend
         (gptel-make-openai-oauth "OpenAI-sub")))
 
+
+(use-package gptel-agent
+  :ensure nil
+  :after gptel)
 
 
 ;; Platform-specific code
