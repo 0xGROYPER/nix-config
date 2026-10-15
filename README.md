@@ -13,6 +13,8 @@ This system uses NixOS + Home Manager with Git as the source of truth for user c
 ├── hosts/
 │   ├── x200s.nix
 │   └── mac.nix
+├── darwin/
+│   └── mini.nix
 └── emacs/
     ├── init.el
     └── early-init.el
@@ -26,6 +28,7 @@ Responsibilities:
 * `home.nix` — user configuration shared across machines: CLI tools, Git/GitHub, Emacs and Emacs packages.
 * `hosts/x200s.nix` — user-level configuration specific to the ThinkPad X200s, including launching EXWM.
 * `hosts/mac.nix` — macOS-specific Home Manager settings.
+* `darwin/mini.nix` — the Mac mini M4's machine configuration (nix-darwin): Tailscale, SSH, power, system tools. The Mac counterpart of `/etc/nixos/configuration.nix`. Apply with `sudo darwin-rebuild switch --flake ~/.config/home-manager#mini` (the first time, `sudo nix run nix-darwin -- switch --flake ~/.config/home-manager#mini`).
 * `emacs/init.el` — portable Emacs behavior and package configuration.
 * `flake.nix` — composes shared and host-specific modules into deployable Home Manager configurations.
 * `flake.lock` — pins Nixpkgs and Home Manager revisions.

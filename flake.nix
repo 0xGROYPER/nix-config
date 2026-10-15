@@ -8,10 +8,20 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    nix-darwin = {
+      url = "github:nix-darwin/nix-darwin/master";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
-    { nixpkgs, home-manager, ... }:
+    {
+      nixpkgs,
+      home-manager,
+      nix-darwin,
+      ...
+    }:
     let
       mkHome =
         {
@@ -49,6 +59,15 @@
           username = "daws";
           homeDirectory = "/Users/daws";
           hostModule = ./hosts/mac.nix;
+        };
+      };
+
+      # Machine-level configuration for Macs (nix-darwin). User settings stay
+      # in homeConfigurations above.
+      darwinConfigurations = {
+        # The Mac mini M4.
+        mini = nix-darwin.lib.darwinSystem {
+          modules = [ ./darwin/mini.nix ];
         };
       };
     };
