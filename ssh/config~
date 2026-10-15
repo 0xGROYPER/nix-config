@@ -1,4 +1,0 @@
-Host mac-desktop
-    HostName dawsons-mac-mini
-    User daws
-    ForwardAgent no
