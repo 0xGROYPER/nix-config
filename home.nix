@@ -49,9 +49,7 @@
 
     # ricer stuff 
     pkgs.screenfetch
-    pkgs.maim
     pkgs.ffmpeg
-    pkgs.xrandr
 
   ];
 

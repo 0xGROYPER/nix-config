@@ -11,6 +11,9 @@
     '';
 
   home.packages = [
+    # X11 screenshots and displays (Linux only)
+    pkgs.maim
+    pkgs.xrandr
     (pkgs.writeShellScriptBin "eww-browser" ''
     exec ${config.programs.emacs.finalPackage}/bin/emacsclient \
       --eval "(eww \"$1\")"
