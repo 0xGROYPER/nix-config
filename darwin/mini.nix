@@ -8,7 +8,7 @@
 #
 #   first time:  sudo nix run nix-darwin -- switch --flake ~/repos/nix-config#mini
 #   after that:  sudo darwin-rebuild switch --flake ~/repos/nix-config#mini
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
 {
   nixpkgs.hostPlatform = "aarch64-darwin";
   system.stateVersion = 6;
@@ -19,6 +19,13 @@
   # Leave the shells' /etc files alone; Home Manager handles your shell.
   programs.zsh.enable = false;
   programs.bash.enable = false;
+  # With the shells left alone, nothing puts nix-darwin's tools (darwin-rebuild,
+  # tailscale, ...) on PATH; macOS's path_helper adds /etc/paths.d entries for
+  # every login shell, and sudo inherits it. path_helper ignores symlinks, so
+  # this is written as a plain file rather than through environment.etc.
+  system.activationScripts.postActivation.text = ''
+    printf '/run/current-system/sw/bin\n' > /etc/paths.d/50-nix-darwin
+  '';
 
   networking.computerName = "mini";
   networking.hostName = "mini";
@@ -36,6 +43,11 @@
 
   # On the tailnet as `mini`.
   services.tailscale.enable = true;
+  # nix-darwin's module links /etc/resolver/ts.net into /etc/static, but
+  # tailscaled (1.102+) writes /etc/resolver itself and refuses to follow a
+  # symlink out of it ("openat ts.net: path escapes from parent"), so its
+  # DNS setup fails. Let tailscaled own the file.
+  environment.etc."resolver/ts.net".enable = lib.mkForce false;
 
   # SSH in from the other machines, by key only.
   services.openssh = {

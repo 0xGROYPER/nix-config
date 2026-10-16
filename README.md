@@ -53,9 +53,9 @@ nix run nixpkgs#git -- clone https://github.com/dawson-shay/nix-config.git ~/rep
 # 3. Machine config (nix-darwin): hostname, Tailscale, SSH, power.
 sudo nix run nix-darwin -- switch --flake ~/repos/nix-config#mini
 
-# 4. Open a new Terminal window (nix-darwin's tools aren't on PATH in old
-#    shells, and sudo never sees them), then join the tailnet.
-sudo /run/current-system/sw/bin/tailscale up
+# 4. Open a new Terminal window (only new login shells pick up nix-darwin's
+#    tools on PATH), then join the tailnet.
+sudo tailscale up
 
 # 5. User config (Home Manager): Emacs, git, gh, shell.
 nix run home-manager -- switch --flake ~/repos/nix-config#<user>@<host>
