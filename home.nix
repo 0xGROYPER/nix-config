@@ -132,5 +132,13 @@
   };
 
   xdg.configFile."emacs".source = ./emacs;
+
+  # One Rust build folder for every checkout, so agent worktrees don't each
+  # build a full target/ (0.5-1 GB apiece) and leave it behind. Concurrent
+  # builds wait for cargo's lock on it instead of running in parallel.
+  home.file.".cargo/config.toml".text = ''
+    [build]
+    target-dir = "${config.home.homeDirectory}/.cache/cargo-target"
+  '';
   
 }
