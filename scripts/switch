@@ -12,5 +12,5 @@ nixbin=/nix/var/nix/profiles/default/bin
 
 system="$("$nixbin/nix" build --no-link --print-out-paths "$flake#darwinConfigurations.$host.system")"
 echo "built $system"
-sudo "$nixbin/nix-env" -p /nix/var/nix/profiles/system --set "$system"
-sudo "$system/activate"
+sudo -H "$nixbin/nix-env" -p /nix/var/nix/profiles/system --set "$system"
+sudo -H "$system/activate"
