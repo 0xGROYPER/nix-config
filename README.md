@@ -28,7 +28,7 @@ Responsibilities:
 * `home.nix` — user configuration shared across machines: CLI tools, Git/GitHub, Emacs and Emacs packages.
 * `hosts/x200s.nix` — user-level configuration specific to the ThinkPad X200s, including launching EXWM.
 * `hosts/mac.nix` — macOS-specific Home Manager settings.
-* `darwin/mini.nix` — the Mac mini M4's machine configuration (nix-darwin): Tailscale, SSH, power, system tools. The Mac counterpart of `/etc/nixos/configuration.nix`. Apply with `sudo darwin-rebuild switch --flake ~/repos/nix-config#mini` (the first time, `sudo nix run nix-darwin -- switch --flake ~/repos/nix-config#mini`).
+* `darwin/mini.nix` — the Mac mini M4's machine configuration (nix-darwin): Tailscale, SSH, power, system tools. The Mac counterpart of `/etc/nixos/configuration.nix`. Apply with `scripts/switch`: it builds as you and activates as root, because `sudo darwin-rebuild switch` evaluates as root, which has no GitHub login for the private tinytrader-ops input.
 * `emacs/init.el` — portable Emacs behavior and package configuration.
 * `flake.nix` — composes shared and host-specific modules into deployable Home Manager configurations.
 * `flake.lock` — pins Nixpkgs and Home Manager revisions.
@@ -50,8 +50,10 @@ curl -fsSL https://install.determinate.systems/nix | sh -s -- install
 # 2. Clone this repo (git from Nix, so nothing else is installed).
 nix run nixpkgs#git -- clone https://github.com/dawson-shay/nix-config.git ~/repos/nix-config
 
-# 3. Machine config (nix-darwin): hostname, Tailscale, SSH, power.
-sudo nix run nix-darwin -- switch --flake ~/repos/nix-config#mini
+# 3. Machine config (nix-darwin): hostname, Tailscale, SSH, power, Colima.
+#    #mini imports the private tinytrader-ops, so this needs GitHub access as
+#    you (not root): a gh login with git using it as the credential helper.
+~/repos/nix-config/scripts/switch
 
 # 4. Open a new Terminal window (only new login shells pick up nix-darwin's
 #    tools on PATH), then join the tailnet.

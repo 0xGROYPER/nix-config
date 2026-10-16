@@ -6,9 +6,9 @@
 # the primary tinytrader host (containers via Colima below). What tinytrader
 # runs here is defined in tinytrader-ops, not in this file.
 #
-#   first time:  sudo nix run nix-darwin -- switch --flake ~/repos/nix-config#mini
-#   after that:  sudo darwin-rebuild switch --flake ~/repos/nix-config#mini
-{ pkgs, lib, ... }:
+#   scripts/switch   (builds as you, so the private tinytrader-ops input can be
+#                    fetched with your GitHub login, then activates as root)
+{ config, pkgs, lib, ... }:
 {
   nixpkgs.hostPlatform = "aarch64-darwin";
   system.stateVersion = 6;
@@ -54,19 +54,34 @@
     docker-buildx
   ];
 
-  # Colima starts at login and stays up. Apple's virtualization (vz) with
-  # virtiofs mounts; the home folder is mounted writable so bind mounts from
-  # ~/repos (e.g. tinytrader-ops' state/console) work.
-  launchd.user.agents.colima = {
-    command = "${pkgs.colima}/bin/colima start --foreground --vm-type vz --mount-type virtiofs --mount $HOME:w --cpu 4 --memory 8 --disk 100";
-    serviceConfig = {
-      RunAtLoad = true;
-      KeepAlive = true;
-      EnvironmentVariables.PATH = "/run/current-system/sw/bin:/usr/bin:/bin:/usr/sbin:/sbin";
-      StandardOutPath = "/tmp/colima.out.log";
-      StandardErrorPath = "/tmp/colima.err.log";
+  # Colima starts at boot and stays up: a system daemon run as the primary
+  # user, so the containers (the trading services, after the cutover) come
+  # back after a reboot or power cut without anyone logging in. That works
+  # because FileVault is off; with it on, nothing starts until the disk is
+  # unlocked at the login window. Apple's virtualization (vz) with virtiofs
+  # mounts; the home folder is mounted writable so bind mounts from ~/repos
+  # (e.g. tinytrader-ops' state/console) work.
+  launchd.daemons.colima =
+    let
+      user = config.system.primaryUser;
+      home = "/Users/${user}";
+    in
+    {
+      command = "${pkgs.colima}/bin/colima start --foreground --vm-type vz --mount-type virtiofs --mount ${home}:w --cpu 4 --memory 8 --disk 100";
+      serviceConfig = {
+        UserName = user;
+        GroupName = "staff";
+        RunAtLoad = true;
+        KeepAlive = true;
+        EnvironmentVariables = {
+          HOME = home;
+          USER = user;
+          PATH = "/run/current-system/sw/bin:/usr/bin:/bin:/usr/sbin:/sbin";
+        };
+        StandardOutPath = "${home}/Library/Logs/colima.out.log";
+        StandardErrorPath = "${home}/Library/Logs/colima.err.log";
+      };
     };
-  };
 
   # On the tailnet as `mini`.
   services.tailscale.enable = true;

@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Apply a Mac's nix-darwin configuration: build it as you, then activate it as
+# root. `sudo darwin-rebuild switch` evaluates as root, which has no GitHub
+# login, so it can't fetch private inputs (tinytrader-ops); building as you
+# uses your gh credentials.
+#   scripts/switch          this Mac (mini)
+#   scripts/switch HOST     another darwinConfigurations entry
+set -euo pipefail
+flake="$(cd "$(dirname "$0")/.." && pwd)"
+host="${1:-mini}"
+nixbin=/nix/var/nix/profiles/default/bin
+
+system="$("$nixbin/nix" build --no-link --print-out-paths "$flake#darwinConfigurations.$host.system")"
+echo "built $system"
+sudo "$nixbin/nix-env" -p /nix/var/nix/profiles/system --set "$system"
+sudo "$system/activate"
