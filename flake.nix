@@ -1,5 +1,5 @@
 {
-  description = "Home Manager configuration";
+  description = "My machines: Home Manager everywhere, nix-darwin for the Macs";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
