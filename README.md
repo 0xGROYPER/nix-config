@@ -115,6 +115,16 @@ A new machine needs its own entries in `flake.nix` (`homeConfigurations` and, fo
 
 A Mac that runs part of the tinytrader deployment then needs the sops age key and the tinytrader checkouts: tinytrader-ops' `docs/operations.md`, "Rebuild a host from scratch".
 
+### Spotlight (by hand)
+
+Keep Spotlight on (turning it off breaks app launching and Finder and Mail search), but keep it out of folders that churn: its index reached 13 GB on the M2 from repos and caches. Its exclusion list is a root-only system file, so it isn't managed here. In System Settings → Spotlight → Search Privacy, add:
+
+- `~/repos`, `~/.cache`, `~/.cargo`, `~/.rustup`, `~/.colima`
+- `~/Library/Containers/com.docker.docker` (Docker Desktop, where installed)
+- `/nix`
+
+For market-data drives, turn indexing off on the drive itself, which survives unplugging better than a Search Privacy entry: `sudo mdutil -i off /Volumes/<drive>`. Note here whatever goes wrong next time Spotlight misbehaves, so the fix can target it.
+
 ## Package management
 
 Do not install persistent workstation tools imperatively when they should be reproducible.
