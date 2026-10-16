@@ -67,7 +67,7 @@
       home = "/Users/${user}";
     in
     {
-      command = "${pkgs.colima}/bin/colima start --foreground --vm-type vz --mount-type virtiofs --mount ${home}:w --cpu 4 --memory 8 --disk 100";
+      command = "${pkgs.colima}/bin/colima start --foreground --vm-type vz --mount-type virtiofs --mount ${home}:w --cpu 6 --memory 12 --disk 100";
       serviceConfig = {
         UserName = user;
         GroupName = "staff";
