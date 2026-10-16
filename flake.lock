@@ -180,11 +180,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1792124488,
-        "narHash": "sha256-NV56kubwDjxjsIJZ1npa48xBMEj2FQyxupBT0rNjaiU=",
+        "lastModified": 1792184402,
+        "narHash": "sha256-QbrQAe5/zF5lmCHDGgRAH2vYpC2DKZnd4rSW4KH8kho=",
         "ref": "main",
-        "rev": "1036803f198a1a0398dc7f918703fee0f6501483",
-        "revCount": 282,
+        "rev": "63519e9adeeb03538ad6df4e1e77d55bf71336d9",
+        "revCount": 304,
         "type": "git",
         "url": "https://github.com/dawson-shay/tinytrader"
       },
@@ -208,11 +208,11 @@
         "tinytrader": "tinytrader"
       },
       "locked": {
-        "lastModified": 1792124567,
-        "narHash": "sha256-Pd3PVo3NqZ+xpETbajbfxoRFQaEo0jNQ2ENf0ClhQww=",
+        "lastModified": 1792184474,
+        "narHash": "sha256-MmJp+DbGA4z8hlooUlxy6bxiSM3v2TZHFihfjd6YaOE=",
         "ref": "main",
-        "rev": "5860fc714ad8e1a9f2b524a688d13c520ff49bf1",
-        "revCount": 137,
+        "rev": "8219620ae3096656d7c4e646d6ab1ce7b422ddfe",
+        "revCount": 163,
         "type": "git",
         "url": "https://github.com/dawson-shay/tinytrader-ops"
       },
