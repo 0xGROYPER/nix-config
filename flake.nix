@@ -13,6 +13,13 @@
       url = "github:nix-darwin/nix-darwin/master";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # The tinytrader deployment (private): the roles machines play in it.
+    # Building a host that imports one needs GitHub access to that repo.
+    tinytrader-ops = {
+      url = "git+https://github.com/dawson-shay/tinytrader-ops?ref=host-mini";
+      inputs.nix-darwin.follows = "nix-darwin";
+    };
   };
 
   outputs =
@@ -20,6 +27,7 @@
       nixpkgs,
       home-manager,
       nix-darwin,
+      tinytrader-ops,
       ...
     }:
     let
@@ -76,7 +84,11 @@
       darwinConfigurations = {
         # The Mac mini M4.
         mini = nix-darwin.lib.darwinSystem {
-          modules = [ ./darwin/mini.nix ];
+          modules = [
+            ./darwin/mini.nix
+            # Its part in tinytrader: what of it runs here natively.
+            tinytrader-ops.darwinModules.mini
+          ];
         };
       };
     };
