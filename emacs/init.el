@@ -5,6 +5,9 @@
 (scroll-bar-mode -1)
 (menu-bar-mode -1)
 
+;; Built-in dark theme (Modus, since Emacs 28): high contrast.
+(load-theme 'modus-vivendi t)
+
 
 (use-package nix-mode
   :mode "\\.nix\\'")
