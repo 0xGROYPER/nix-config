@@ -210,14 +210,14 @@
       "locked": {
         "lastModified": 1792116541,
         "narHash": "sha256-4SI0UmhtIPh538/p7VImMqgIA/204vTyxv2okqj1ccQ=",
-        "ref": "host-mini",
+        "ref": "main",
         "rev": "c3131cbd32527f75f7e1c21642b951d3e9bbe0a7",
         "revCount": 127,
         "type": "git",
         "url": "https://github.com/dawson-shay/tinytrader-ops"
       },
       "original": {
-        "ref": "host-mini",
+        "ref": "main",
         "type": "git",
         "url": "https://github.com/dawson-shay/tinytrader-ops"
       }
