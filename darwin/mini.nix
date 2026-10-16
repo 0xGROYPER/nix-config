@@ -2,9 +2,9 @@
 # setup (git, gh, Emacs, SSH config) stays in Home Manager (home.nix and
 # hosts/mac.nix), applied as on every machine.
 #
-# It's the main desktop and runs research and training jobs. It runs none of
-# tinytrader's services (they're on the NAS), so nothing here comes from
-# tinytrader-ops.
+# It's the main desktop and runs research and training jobs, and is becoming
+# the primary tinytrader host (containers via Colima below). What tinytrader
+# runs here is defined in tinytrader-ops, not in this file.
 #
 #   first time:  sudo nix run nix-darwin -- switch --flake ~/repos/nix-config#mini
 #   after that:  sudo darwin-rebuild switch --flake ~/repos/nix-config#mini
@@ -25,6 +25,13 @@
   # this is written as a plain file rather than through environment.etc.
   system.activationScripts.postActivation.text = ''
     printf '/run/current-system/sw/bin\n' > /etc/paths.d/50-nix-darwin
+
+    # `docker compose` / `docker buildx`: docker looks for CLI plugins here.
+    mkdir -p /usr/local/libexec/docker/cli-plugins
+    ln -sfn ${pkgs.docker-compose}/libexec/docker/cli-plugins/docker-compose \
+      /usr/local/libexec/docker/cli-plugins/docker-compose
+    ln -sfn ${pkgs.docker-buildx}/libexec/docker/cli-plugins/docker-buildx \
+      /usr/local/libexec/docker/cli-plugins/docker-buildx
   '';
 
   networking.computerName = "mini";
@@ -39,7 +46,27 @@
     sops
     ssh-to-age
     tmux
+    # Containers: Colima runs the Docker engine in a lightweight VM (no
+    # Docker Desktop); docker, compose and buildx are the client side.
+    colima
+    docker-client
+    docker-compose
+    docker-buildx
   ];
+
+  # Colima starts at login and stays up. Apple's virtualization (vz) with
+  # virtiofs mounts; the home folder is mounted writable so bind mounts from
+  # ~/repos (e.g. tinytrader-ops' state/console) work.
+  launchd.user.agents.colima = {
+    command = "${pkgs.colima}/bin/colima start --foreground --vm-type vz --mount-type virtiofs --mount $HOME:w --cpu 4 --memory 8 --disk 100";
+    serviceConfig = {
+      RunAtLoad = true;
+      KeepAlive = true;
+      EnvironmentVariables.PATH = "/run/current-system/sw/bin:/usr/bin:/bin:/usr/sbin:/sbin";
+      StandardOutPath = "/tmp/colima.out.log";
+      StandardErrorPath = "/tmp/colima.err.log";
+    };
+  };
 
   # On the tailnet as `mini`.
   services.tailscale.enable = true;
