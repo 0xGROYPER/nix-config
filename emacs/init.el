@@ -66,7 +66,7 @@
 
 
 ;; Platform-specific code
-;; Probably refactored out to ~/.config/home-manager/hosts/ once warranted
+;; Probably refactored out to ~/repos/nix-config/hosts/ once warranted
 (when (eq system-type 'darwin)
   (setq mac-command-modifier 'meta))
 

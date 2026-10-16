@@ -6,7 +6,7 @@ This system uses NixOS + Home Manager with Git as the source of truth for user c
 
 ```text
 /etc/nixos/configuration.nix
-~/.config/home-manager/
+~/repos/nix-config/
 ├── flake.nix
 ├── flake.lock
 ├── home.nix
@@ -28,7 +28,7 @@ Responsibilities:
 * `home.nix` — user configuration shared across machines: CLI tools, Git/GitHub, Emacs and Emacs packages.
 * `hosts/x200s.nix` — user-level configuration specific to the ThinkPad X200s, including launching EXWM.
 * `hosts/mac.nix` — macOS-specific Home Manager settings.
-* `darwin/mini.nix` — the Mac mini M4's machine configuration (nix-darwin): Tailscale, SSH, power, system tools. The Mac counterpart of `/etc/nixos/configuration.nix`. Apply with `sudo darwin-rebuild switch --flake ~/.config/home-manager#mini` (the first time, `sudo nix run nix-darwin -- switch --flake ~/.config/home-manager#mini`).
+* `darwin/mini.nix` — the Mac mini M4's machine configuration (nix-darwin): Tailscale, SSH, power, system tools. The Mac counterpart of `/etc/nixos/configuration.nix`. Apply with `sudo darwin-rebuild switch --flake ~/repos/nix-config#mini` (the first time, `sudo nix run nix-darwin -- switch --flake ~/repos/nix-config#mini`).
 * `emacs/init.el` — portable Emacs behavior and package configuration.
 * `flake.nix` — composes shared and host-specific modules into deployable Home Manager configurations.
 * `flake.lock` — pins Nixpkgs and Home Manager revisions.
@@ -48,17 +48,17 @@ Install nothing else by hand first: anything installed outside Nix (gh, Tailscal
 curl -fsSL https://install.determinate.systems/nix | sh -s -- install
 
 # 2. Clone this repo (git from Nix, so nothing else is installed).
-nix run nixpkgs#git -- clone https://github.com/dawson-shay/nix-config.git ~/.config/home-manager
+nix run nixpkgs#git -- clone https://github.com/dawson-shay/nix-config.git ~/repos/nix-config
 
 # 3. Machine config (nix-darwin): hostname, Tailscale, SSH, power.
-sudo nix run nix-darwin -- switch --flake ~/.config/home-manager#mini
+sudo nix run nix-darwin -- switch --flake ~/repos/nix-config#mini
 
 # 4. Open a new Terminal window (nix-darwin's tools aren't on PATH in old
 #    shells, and sudo never sees them), then join the tailnet.
 sudo /run/current-system/sw/bin/tailscale up
 
 # 5. User config (Home Manager): Emacs, git, gh, shell.
-nix run home-manager -- switch --flake ~/.config/home-manager#<user>@<host>
+nix run home-manager -- switch --flake ~/repos/nix-config#<user>@<host>
 
 # 6. Log in for real with the Nix-managed gh.
 gh auth login
@@ -115,7 +115,7 @@ nix shell nixpkgs#PACKAGE
 Home Manager deploys:
 
 ```text
-~/.config/home-manager/emacs/
+~/repos/nix-config/emacs/
 ```
 
 to:
@@ -124,7 +124,7 @@ to:
 ~/.config/emacs/
 ```
 
-Edit the source files under `~/.config/home-manager/emacs/`, then run Home Manager to deploy them.
+Edit the source files under `~/repos/nix-config/emacs/`, then run Home Manager to deploy them.
 
 EXWM is installed through Home Manager and launched on the X200s using:
 

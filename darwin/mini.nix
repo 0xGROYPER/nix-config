@@ -6,8 +6,8 @@
 # tinytrader's services (they're on the NAS), so nothing here comes from
 # tinytrader-ops.
 #
-#   first time:  sudo nix run nix-darwin -- switch --flake ~/.config/home-manager#mini
-#   after that:  sudo darwin-rebuild switch --flake ~/.config/home-manager#mini
+#   first time:  sudo nix run nix-darwin -- switch --flake ~/repos/nix-config#mini
+#   after that:  sudo darwin-rebuild switch --flake ~/repos/nix-config#mini
 { pkgs, ... }:
 {
   nixpkgs.hostPlatform = "aarch64-darwin";
