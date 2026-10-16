@@ -101,6 +101,15 @@
     '';
   };
 
+  # Keep the M2's nightly tinytrader backups here (tinytrader-ops
+  # modules/backup-darwin.nix): its backup key, from tinytrader-ops'
+  # inventory.nix backup.keys, goes in this user's authorized keys
+  # (users.users.<you>.openssh.authorizedKeys), restricted to rrsync,
+  # write-only, from the tailnet, into ~/Backups/tinytrader-from-mac-mini-m2
+  # (mode 700). Its files are age-encrypted before they leave the M2; no
+  # shell, no forwarding, nothing readable back. Needs the sshd above.
+  tinytrader-ops.backup.receive = true;
+
   # Long training runs: the computer never sleeps (the display still does),
   # and it comes back after a power cut.
   power.sleep.computer = "never";
