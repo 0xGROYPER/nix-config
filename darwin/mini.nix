@@ -12,7 +12,8 @@
 {
   nixpkgs.hostPlatform = "aarch64-darwin";
   system.stateVersion = 6;
-  system.primaryUser = "daws";
+  # This Mac's account is still dawsonshay; change to daws after the rename.
+  system.primaryUser = "dawsonshay";
   # Determinate Nix manages Nix itself.
   nix.enable = false;
   # Leave the shells' /etc files alone; Home Manager handles your shell.

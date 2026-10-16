@@ -39,6 +39,33 @@ The current ThinkPad Home Manager target is:
 home-manager switch --flake '.#daws@x200s'
 ```
 
+## New Mac
+
+Install nothing else by hand first: anything installed outside Nix (gh, Tailscale, etc.) will clash with what the switch manages. The repo is public and holds no secrets, so cloning needs no login.
+
+```sh
+# 1. Install Nix (once). Then open a new Terminal window.
+curl -fsSL https://install.determinate.systems/nix | sh -s -- install
+
+# 2. Clone this repo (git from Nix, so nothing else is installed).
+nix run nixpkgs#git -- clone https://github.com/dawson-shay/nix-config.git ~/.config/home-manager
+
+# 3. Machine config (nix-darwin): hostname, Tailscale, SSH, power.
+sudo nix run nix-darwin -- switch --flake ~/.config/home-manager#mini
+
+# 4. Open a new Terminal window (nix-darwin's tools aren't on PATH in old
+#    shells, and sudo never sees them), then join the tailnet.
+sudo /run/current-system/sw/bin/tailscale up
+
+# 5. User config (Home Manager): Emacs, git, gh, shell.
+nix run home-manager -- switch --flake ~/.config/home-manager#<user>@<host>
+
+# 6. Log in for real with the Nix-managed gh.
+gh auth login
+```
+
+A new machine needs its own entries in `flake.nix` (`homeConfigurations` and, for a Mac, `darwinConfigurations`), with its username and home directory. If a switch stops because a file already exists, add `-b backup` to move the old file aside.
+
 ## Package management
 
 Do not install persistent workstation tools imperatively when they should be reproducible.
@@ -134,11 +161,13 @@ GitHub authentication is handled by `gh`, with Git configured to use the `gh` cr
 
 The shared Emacs configuration should remain ordinary portable Emacs Lisp.
 
-Home Manager provides packages and files on both Linux and macOS. macOS does not currently use nix-darwin; only developer/user configuration is intended to be portable.
+Home Manager provides packages and files on both Linux and macOS. On macOS, nix-darwin (`darwin/mini.nix`) handles the machine level, as NixOS does on Linux; only developer/user configuration is intended to be portable.
 
 Machine-specific behavior should remain outside shared `home.nix` whenever practical.
 
 ## Guiding rule
+
+This repository is public: never commit secrets, tokens or keys to it, even encrypted. Secrets live in private repos as sops files (see tinytrader-ops) or outside git.
 
 Treat the repository as the source of truth. Avoid manually mutating generated files such as:
 

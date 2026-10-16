@@ -98,7 +98,7 @@
     settings = {
       user = {
         name = "Dawson Shay";
-        email = "dawson.shay@icloud.com";
+        email = "292910774+dawson-shay@users.noreply.github.com";
       };
     };
   };
