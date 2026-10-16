@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Store the local AI endpoint's keys in nix-secrets' ai-proxy.env (sops): your
+# OpenRouter key, read without echoing, and a new random key for its clients.
+# Nothing is printed. Needs the operator age key and a checkout of nix-secrets
+# (default ~/repos/nix-secrets, or NIX_SECRETS=dir).
+#   scripts/ai-key
+# Then publish it and apply it (the daemon reads its keys when it starts):
+#   git -C ~/repos/nix-secrets commit -am "ai-proxy: new keys" && git -C ~/repos/nix-secrets push
+#   nix flake update nix-secrets && scripts/switch
+#   sudo launchctl kickstart -k system/org.nixos.ai-proxy
+# Clients then need the new client key: scripts/ai-client-key.
+set -euo pipefail
+secrets="${NIX_SECRETS:-$HOME/repos/nix-secrets}"
+[ -f "$secrets/.sops.yaml" ] || { echo "no nix-secrets checkout at $secrets (set NIX_SECRETS)" >&2; exit 1; }
+cd "$secrets"
+sops="$(command -v sops || echo /run/current-system/sw/bin/sops)"
+read -rsp "OpenRouter API key: " key; echo
+[ -n "$key" ] || { echo "no key given" >&2; exit 2; }
+umask 077
+printf 'OPENROUTER_API_KEY=%s\nAI_PROXY_KEY=%s\n' "$key" "$(openssl rand -hex 24)" \
+  | "$sops" encrypt --input-type dotenv --output-type dotenv \
+      --filename-override ai-proxy.env /dev/stdin > ai-proxy.env.tmp
+mv ai-proxy.env.tmp ai-proxy.env
+unset key
+echo "stored in $secrets/ai-proxy.env; commit and push it, then see the top of $0"

@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Print the local AI endpoint's client key, for tools that fetch a key by
+# running a command, e.g. Pi's "apiKey": "!<this script>", or gptel's
+# :key (lambda () ...). Read from the file sops-nix decrypts for the daemon
+# (/run/secrets/ai-proxy.env, readable only by you); elsewhere, from
+# nix-secrets with your operator key.
+#   base URL http://127.0.0.1:8317/v1, API key: scripts/ai-client-key
+set -euo pipefail
+file=/run/secrets/ai-proxy.env
+if [ -r "$file" ]; then
+  sed -n 's/^AI_PROXY_KEY=//p' "$file"
+else
+  sops="$(command -v sops || echo /run/current-system/sw/bin/sops)"
+  "$sops" decrypt "${NIX_SECRETS:-$HOME/repos/nix-secrets}/ai-proxy.env" | sed -n 's/^AI_PROXY_KEY=//p'
+fi

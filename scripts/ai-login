@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Sign the local AI endpoint (darwin/ai-proxy.nix) in to a subscription
+# through CLIProxyAPI's own OAuth login, once per account. The token lands in
+# the endpoint's private auth folder (~/.local/state/ai-proxy/auth), which the
+# running daemon watches and picks up; nothing goes into a repository. Run it
+# in your own terminal:
+#   scripts/ai-login chatgpt       (OpenAI Codex, with your ChatGPT account)
+#   scripts/ai-login chatgpt-code  (the same, typing a code instead of a browser callback)
+#   scripts/ai-login gemini        (Google Antigravity, with your Google account)
+#   scripts/ai-login claude        (Claude Code; Pro or Max. Check Anthropic's terms first)
+# Each provider's terms decide whether its subscription may be used this way.
+set -euo pipefail
+state="${AI_PROXY_STATE:-${XDG_STATE_HOME:-$HOME/.local/state}/ai-proxy}"
+config="$state/config.yaml"
+[ -f "$config" ] || { echo "no $config: is the ai-proxy daemon running? (sudo launchctl print system/org.nixos.ai-proxy)" >&2; exit 1; }
+case "${1:-}" in
+  chatgpt) flag=-codex-login ;;
+  chatgpt-code) flag=-codex-device-login ;;
+  gemini) flag=-antigravity-login ;;
+  claude) flag=-claude-login ;;
+  *) echo "usage: scripts/ai-login chatgpt|chatgpt-code|gemini|claude" >&2; exit 2 ;;
+esac
+# darwin/ai-proxy.nix puts cliproxyapi on the system PATH; elsewhere, this
+# flake's package.
+if command -v cliproxyapi >/dev/null; then
+  run=(cliproxyapi)
+else
+  flake="$(cd "$(dirname "$0")/.." && pwd)"
+  run=("$(command -v nix || echo /nix/var/nix/profiles/default/bin/nix)" run "$flake#cliproxyapi" --)
+fi
+umask 077  # tokens are written owner-only
+exec "${run[@]}" -config "$config" "$flag"

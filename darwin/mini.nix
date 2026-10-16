@@ -10,6 +10,15 @@
 #                    fetched with your GitHub login, then activates as root)
 { config, pkgs, lib, ... }:
 {
+  # The local AI endpoint, a daemon run as you on 127.0.0.1:8317.
+  imports = [ ./ai-proxy.nix ];
+
+  # sops-nix (secrets from the private nix-secrets input): decrypt with this
+  # Mac's SSH host key, as an age key (its recipient is in nix-secrets'
+  # .sops.yaml). Not the RSA host key as a GPG key, sops-nix's other default.
+  sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+  sops.gnupg.sshKeyPaths = [ ];
+
   nixpkgs.hostPlatform = "aarch64-darwin";
   system.stateVersion = 6;
   # This Mac's account is still dawsonshay; change to daws after the rename.

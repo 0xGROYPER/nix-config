@@ -74,6 +74,22 @@
         "type": "github"
       }
     },
+    "nix-secrets": {
+      "locked": {
+        "lastModified": 1792194593,
+        "narHash": "sha256-fQHMCF4snP8ca7ga2rs3g2lhpHLhJFd3OZs8MbrZnGM=",
+        "ref": "main",
+        "rev": "75e1787cae72e1b3b3f7fff1f83b1b5d3698b1e5",
+        "revCount": 1,
+        "type": "git",
+        "url": "https://github.com/dawson-shay/nix-secrets"
+      },
+      "original": {
+        "ref": "main",
+        "type": "git",
+        "url": "https://github.com/dawson-shay/nix-secrets"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1790046670,
@@ -125,7 +141,9 @@
       "inputs": {
         "home-manager": "home-manager",
         "nix-darwin": "nix-darwin",
+        "nix-secrets": "nix-secrets",
         "nixpkgs": "nixpkgs",
+        "sops-nix": "sops-nix",
         "tinytrader-ops": "tinytrader-ops"
       }
     },
@@ -152,6 +170,26 @@
       }
     },
     "sops-nix": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1792056300,
+        "narHash": "sha256-YU1LjDe1o2Ymg5zEiCHbmMXLkDCtxHQRiVqZ3nC5GGk=",
+        "owner": "Mic92",
+        "repo": "sops-nix",
+        "rev": "44931708c62937c2b1bf7953902989fa5bb9ee1b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Mic92",
+        "repo": "sops-nix",
+        "type": "github"
+      }
+    },
+    "sops-nix_2": {
       "inputs": {
         "nixpkgs": [
           "tinytrader-ops",
@@ -204,7 +242,7 @@
           "tinytrader",
           "nixpkgs"
         ],
-        "sops-nix": "sops-nix",
+        "sops-nix": "sops-nix_2",
         "tinytrader": "tinytrader"
       },
       "locked": {

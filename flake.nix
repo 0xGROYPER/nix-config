@@ -20,6 +20,16 @@
       url = "git+https://github.com/dawson-shay/tinytrader-ops?ref=main";
       inputs.nix-darwin.follows = "nix-darwin";
     };
+
+    # Secrets for the machines, decrypted on them at activation.
+    sops-nix = {
+      url = "github:Mic92/sops-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    # My secrets (private): sops files, encrypted to age keys (its README).
+    # Like tinytrader-ops, building a host that uses it needs GitHub access.
+    nix-secrets.url = "git+https://github.com/dawson-shay/nix-secrets?ref=main";
   };
 
   outputs =
@@ -28,6 +38,8 @@
       home-manager,
       nix-darwin,
       tinytrader-ops,
+      sops-nix,
+      nix-secrets,
       ...
     }:
     let
@@ -79,12 +91,27 @@
         };
       };
 
+      # The local AI endpoint (darwin/ai-proxy.nix runs it on mini), to run
+      # or try by hand: nix run .#ai-proxy, nix run .#cliproxyapi.
+      packages = nixpkgs.lib.genAttrs [ "aarch64-darwin" "x86_64-darwin" "aarch64-linux" "x86_64-linux" ] (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        rec {
+          cliproxyapi = pkgs.callPackage ./pkgs/cliproxyapi.nix { };
+          ai-proxy = pkgs.callPackage ./pkgs/ai-proxy.nix { inherit cliproxyapi; };
+        }
+      );
+
       # Machine-level configuration for Macs (nix-darwin). User settings stay
       # in homeConfigurations above.
       darwinConfigurations = {
         # The Mac mini M4.
         mini = nix-darwin.lib.darwinSystem {
+          specialArgs = { inherit nix-secrets; };
           modules = [
+            sops-nix.darwinModules.sops
             ./darwin/mini.nix
             # Its part in tinytrader: what of it runs here natively.
             tinytrader-ops.darwinModules.mini
