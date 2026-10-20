@@ -93,6 +93,14 @@
   # Let Home Manager install and manage itself.
   programs.home-manager.enable = true;
 
+  # A repo's .envrc (`use flake`) loads its dev shell on cd, so cargo there is
+  # the repo's pinned toolchain, not the one installed above. Each repo needs
+  # `direnv allow` once.
+  programs.direnv = {
+    enable = true;
+    nix-direnv.enable = true;
+  };
+
   programs.git = {
     enable = true;
     settings = {
