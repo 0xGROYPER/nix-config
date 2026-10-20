@@ -109,6 +109,10 @@
       PermitRootLogin no
     '';
   };
+  # The keys allowed in (public keys only; the backup module adds the M2's).
+  users.users.dawsonshay.openssh.authorizedKeys.keys = [
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKAL6Lsp876QwJzwyhOxt4vutaFD0gL8y2q6QiysuNnP daws@macbook-air"
+  ];
 
   # Keep the M2's nightly tinytrader backups here (tinytrader-ops
   # modules/backup-darwin.nix): its backup key, from tinytrader-ops'
