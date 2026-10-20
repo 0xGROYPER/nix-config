@@ -119,6 +119,11 @@
   # shell, no forwarding, nothing readable back. Needs the sshd above.
   tinytrader-ops.backup.receive = true;
 
+  # Deploy what merges to tinytrader and tinytrader-ops main, every 5 minutes
+  # outside market hours; never the gateways, relays or pead (tinytrader-ops
+  # decision 0011). Pause: touch ~/.config/tinytrader/auto-deploy.off
+  tinytrader-ops.autoDeploy.enable = true;
+
   # Long training runs: the computer never sleeps (the display still does),
   # and it comes back after a power cut.
   power.sleep.computer = "never";
