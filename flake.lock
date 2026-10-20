@@ -248,14 +248,14 @@
       "locked": {
         "lastModified": 1792531544,
         "narHash": "sha256-fGQfBSmXmxlddmYe+wIvdIvuM78xc9L9TQlEghL+K3A=",
-        "ref": "m2-rebuild",
+        "ref": "main",
         "rev": "76c2797e40c46b2dbb0338b78ef7518c9dc4f33a",
         "revCount": 197,
         "type": "git",
         "url": "https://github.com/dawson-shay/tinytrader-ops"
       },
       "original": {
-        "ref": "m2-rebuild",
+        "ref": "main",
         "type": "git",
         "url": "https://github.com/dawson-shay/tinytrader-ops"
       }
