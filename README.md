@@ -181,6 +181,8 @@ sudo tailscale up
 
 A new machine needs its own entries in `flake.nix` (`homeConfigurations` and, for a Mac, `darwinConfigurations`), with its username and home directory. If a switch stops because a file already exists, add `-b backup` to move the old file aside.
 
+Before step 3, move aside what would shadow or fight the managed config (to `~/.local/share/pre-nix-backup/`, not deleted): `~/.emacs.d` (Emacs ignores the managed `~/.config/emacs` while it exists, silently), and any hand-written `~/.zshrc` and `~/.ssh/config` (keep a copy of any host aliases worth adding to `ssh/config` here). Homebrew can stay, but `brew uninstall` what Nix now provides (gh, git, emacs) so only one is on PATH.
+
 A Mac that runs part of the tinytrader deployment then needs the sops age key and the tinytrader checkouts: tinytrader-ops' `docs/operations.md`, "Rebuild a host from scratch".
 
 ### Spotlight (by hand)

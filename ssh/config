@@ -1,4 +1,18 @@
-Host mac-desktop
-    HostName dawsons-mac-mini
+# The Macs, over Tailscale (MagicDNS names, so a changed address doesn't
+# matter). m4 is the Mac mini M4 (hostname "mini", the primary); m2 and
+# mac-desktop are the older Mac mini M2 (NAS and job runner).
+Host m4
+    HostName mini.tail8aa7c8.ts.net
+    User dawsonshay
+
+Host m2 mac-desktop
+    HostName dawsons-mac-mini.tail8aa7c8.ts.net
     User daws
+
+# One connection per host, reused for 10 minutes: Emacs TRAMP, git and repeat
+# ssh commands skip the handshake.
+Host m4 m2 mac-desktop
+    ControlMaster auto
+    ControlPath ~/.ssh/cm-%r@%h:%p
+    ControlPersist 10m
     ForwardAgent no
