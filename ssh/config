@@ -16,3 +16,6 @@ Host m4 m2 mac-desktop
     ControlPath ~/.ssh/cm-%r@%h:%p
     ControlPersist 10m
     ForwardAgent no
+    # Tailscale authenticates the machines, so trust a host's key the first
+    # time; a changed key is still refused.
+    StrictHostKeyChecking accept-new
