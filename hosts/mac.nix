@@ -8,7 +8,10 @@
   # nix-darwin's tools (docker, tmux, darwin-rebuild, ...). /etc/paths.d adds
   # them for login shells only; `ssh host cmd` and other non-login shells
   # need them here too.
-  home.sessionPath = [ "/run/current-system/sw/bin" ];
+  home.sessionPath = [
+    "$HOME/.local/bin" # claude, and other self-updating user tools
+    "/run/current-system/sw/bin"
+  ];
 
   programs.zsh = {
     enable = true;
