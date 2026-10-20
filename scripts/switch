@@ -4,11 +4,24 @@
 # login, so it can't fetch private inputs (tinytrader-ops); building as you
 # uses your gh credentials.
 #   scripts/switch          this Mac (mini)
-#   scripts/switch HOST     another darwinConfigurations entry
+#   scripts/switch HOST     another darwinConfigurations entry (the M2: m2)
+# It asks before applying a configuration made for another Mac (its
+# LocalHostName differs from this one's): that would rename this Mac and run
+# that Mac's services here. A freshly installed Mac whose name doesn't match
+# yet asks too: answer y.
 set -euo pipefail
 flake="$(cd "$(dirname "$0")/.." && pwd)"
 host="${1:-mini}"
 nixbin=/nix/var/nix/profiles/default/bin
+
+lower() { tr '[:upper:]' '[:lower:]' <<<"$1"; }
+want="$("$nixbin/nix" eval --raw "$flake#darwinConfigurations.$host.config.networking.localHostName")"
+have="$(scutil --get LocalHostName 2>/dev/null || true)"
+if [ "$(lower "$want")" != "$(lower "$have")" ]; then
+  printf '#%s is the configuration for %s, but this Mac is %s. Apply it here anyway? [y/N] ' "$host" "$want" "${have:-unnamed}"
+  read -r answer
+  [ "$answer" = y ] || { echo "nothing applied" >&2; exit 1; }
+fi
 
 system="$("$nixbin/nix" build --no-link --print-out-paths "$flake#darwinConfigurations.$host.system")"
 echo "built $system"

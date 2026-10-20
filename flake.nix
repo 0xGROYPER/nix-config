@@ -17,7 +17,9 @@
     # The tinytrader deployment (private): the roles machines play in it.
     # Building a host that imports one needs GitHub access to that repo.
     tinytrader-ops = {
-      url = "git+https://github.com/dawson-shay/tinytrader-ops?ref=main";
+      # m2-rebuild until that branch merges (its darwinModules.mac-mini-m2);
+      # then back to main, and nix flake update tinytrader-ops.
+      url = "git+https://github.com/dawson-shay/tinytrader-ops?ref=m2-rebuild";
       inputs.nix-darwin.follows = "nix-darwin";
     };
 
@@ -73,7 +75,8 @@
           hostModule = ./hosts/x200s.nix;
         };
 
-        # Change to x86_64-darwin later if the Mac is Intel.
+        # Any Mac whose account is daws: the M2 (darwinConfigurations.m2), the
+        # laptop. Change to x86_64-darwin later if a Mac is Intel.
         "daws@mac" = mkHome {
           system = "aarch64-darwin";
           username = "daws";
@@ -115,6 +118,18 @@
             ./darwin/mini.nix
             # Its part in tinytrader: what of it runs here natively.
             tinytrader-ops.darwinModules.mini
+          ];
+        };
+
+        # The Mac mini M2 (the NAS and job runner until the real NAS).
+        m2 = nix-darwin.lib.darwinSystem {
+          specialArgs = { inherit nix-secrets; };
+          modules = [
+            sops-nix.darwinModules.sops
+            ./darwin/m2.nix
+            # Its part in tinytrader: the store, alpaca-history, the monitor,
+            # node_exporter, the backups.
+            tinytrader-ops.darwinModules.mac-mini-m2
           ];
         };
       };

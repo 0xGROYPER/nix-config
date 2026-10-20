@@ -246,16 +246,16 @@
         "tinytrader": "tinytrader"
       },
       "locked": {
-        "lastModified": 1792446948,
-        "narHash": "sha256-W9CiaY+wSQ9mGidD2gdCKnurM5kUaCug05Smzxjne3w=",
-        "ref": "main",
-        "rev": "83f959e12329d5798e812adcd66d6392c31c09b6",
-        "revCount": 189,
+        "lastModified": 1792531544,
+        "narHash": "sha256-fGQfBSmXmxlddmYe+wIvdIvuM78xc9L9TQlEghL+K3A=",
+        "ref": "m2-rebuild",
+        "rev": "76c2797e40c46b2dbb0338b78ef7518c9dc4f33a",
+        "revCount": 197,
         "type": "git",
         "url": "https://github.com/dawson-shay/tinytrader-ops"
       },
       "original": {
-        "ref": "main",
+        "ref": "m2-rebuild",
         "type": "git",
         "url": "https://github.com/dawson-shay/tinytrader-ops"
       }

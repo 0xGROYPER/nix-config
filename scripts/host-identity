@@ -1,0 +1,285 @@
+#!/usr/bin/env bash
+# Keep a Mac's SSH host keys across a wipe, so it keeps its identity: the same
+# key in everyone's known_hosts, and the same age recipient (ssh-to-age) for
+# the sops files encrypted to it, with nothing to re-encrypt.
+#
+# Run it from the Mac you work at (the one with the operator age key and a
+# nix-secrets checkout), against the host over SSH:
+#
+#   scripts/host-identity save    HOST TARGET   copy TARGET's /etc/ssh/ssh_host_*_key
+#                                               (and .pub) into nix-secrets, encrypted
+#   scripts/host-identity restore HOST TARGET   put them back on a freshly installed
+#                                               TARGET, before its first switch
+#   scripts/host-identity check   HOST TARGET [--expect AGE]...
+#                                               does TARGET present the saved key?
+#   scripts/host-identity operator-key TARGET   copy this Mac's sops age key (the
+#                                               operator key) to TARGET, if it has none
+#
+# HOST names the host in nix-secrets (hosts/HOST/), e.g. its
+# darwinConfigurations name. TARGET is an ssh destination (an alias, user@host,
+# a LAN address before Tailscale is up), or `local` for this Mac.
+#
+# What lands in nix-secrets (commit and push it yourself after `save`):
+#   hosts/HOST/ssh_host_keys.yaml        the keys, a tar in a sops file, encrypted
+#                                        to the operator and recovery keys only:
+#                                        never to the host itself (.sops.yaml)
+#   hosts/HOST/ssh_host_ed25519_key.pub  the public key, plain
+#   hosts/HOST/age-recipient             ssh-to-age of it, plain
+#
+# Neither direction prints a key or keeps one on this Mac's disk: `save`
+# streams the keys from TARGET straight into sops, and `restore` streams
+# sops's output straight to TARGET. Reading and writing /etc/ssh needs root on
+# TARGET, and sudo there needs a terminal for its password, so the keys wait
+# in a private temporary folder (mode 700, under TARGET's user) between the
+# copy and the sudo step, and are deleted after it.
+#
+# macOS's sshd is started by launchd for each connection, so the next
+# connection after `restore` already uses the restored key: no restart.
+#
+# Environment: NIX_SECRETS, the nix-secrets checkout (default ~/repos/nix-secrets).
+set -euo pipefail
+export PATH="/run/current-system/sw/bin:$HOME/.nix-profile/bin:/nix/var/nix/profiles/default/bin:$PATH"
+
+secrets="${NIX_SECRETS:-$HOME/repos/nix-secrets}"
+# For tests only: a stand-in for /etc/ssh, how to become root, and the
+# owner the keys get.
+ssh_dir="${HOST_IDENTITY_SSH_DIR:-/etc/ssh}"
+sudo_cmd="${HOST_IDENTITY_SUDO-sudo}"
+owner="${HOST_IDENTITY_OWNER:-root:wheel}"
+aside_dir="${HOST_IDENTITY_ASIDE:-/var/root}"
+
+die() { echo "host-identity: $*" >&2; exit 1; }
+usage() { sed -n '/^#   scripts/,/^# HOST/p' "$0" | sed '$d; s/^# \{0,1\}//' >&2; exit 2; }
+need() { for c in "$@"; do command -v "$c" >/dev/null || die "$c not found (nix-darwin's systemPackages has it)"; done; }
+
+[ $# -ge 1 ] || usage
+cmd="$1"
+shift
+
+# --- running things on TARGET ---------------------------------------------
+target=""
+ssh_opts=()
+q() { printf '%q' "$1"; }
+# run CMD: on TARGET, no terminal (stdin and stdout are data).
+run() {
+  if [ "$target" = local ]; then bash -c "$1"; else ssh ${ssh_opts[@]+"${ssh_opts[@]}"} "$target" "$1"; fi
+}
+# run_tty CMD: on TARGET with a terminal, for sudo's password.
+run_tty() {
+  if [ "$target" = local ]; then bash -c "$1"; else ssh -t ${ssh_opts[@]+"${ssh_opts[@]}"} "$target" "$1"; fi
+}
+tmp=""
+cleanup() {
+  if [ -n "$tmp" ]; then
+    run "rm -f $(q "$tmp")/keys.tar $(q "$tmp")/install.sh 2>/dev/null; rm -rf $(q "$tmp")" 2>/dev/null || true
+  fi
+}
+trap cleanup EXIT
+remote_tmp() { tmp="$(run 'umask 077 && mktemp -d')" && [ -n "$tmp" ] || die "could not make a temporary folder on $target"; }
+
+# --- nix-secrets -----------------------------------------------------------
+dir() { echo "$secrets/hosts/$1"; }
+anchor() { sed -n "s/^ *- &$1 \(age1[a-z0-9]*\).*/\1/p" "$secrets/.sops.yaml" | head -n1; }
+check_secrets() {
+  [ -f "$secrets/.sops.yaml" ] || die "no nix-secrets checkout at $secrets (set NIX_SECRETS)"
+  [ -n "$(anchor operator)" ] && [ -n "$(anchor recovery)" ] || die "$secrets/.sops.yaml names no &operator and &recovery keys"
+}
+# The recipients a sops file is encrypted to, sorted, one per line.
+recipients_of() { sed -n 's/^ *- recipient: \(age1[a-z0-9]*\)$/\1/p; s/^ *recipient: \(age1[a-z0-9]*\)$/\1/p' "$1" | sort -u; }
+
+# The ed25519 public key TARGET presents now (just the type and key).
+presented_key() {
+  if [ "$target" = local ]; then
+    awk '{print $1, $2}' "$ssh_dir/ssh_host_ed25519_key.pub"
+  else
+    local h p
+    h="$(ssh -G ${ssh_opts[@]+"${ssh_opts[@]}"} "$target" 2>/dev/null | awk '$1 == "hostname" {print $2}')"
+    p="$(ssh -G ${ssh_opts[@]+"${ssh_opts[@]}"} "$target" 2>/dev/null | awk '$1 == "port" {print $2}')"
+    ssh-keyscan -T 10 -p "$p" -t ed25519 "$h" 2>/dev/null | awk '$2 == "ssh-ed25519" {print $2, $3; exit}'
+  fi
+}
+fingerprint() { ssh-keygen -lf /dev/stdin <<<"$1" | awk '{print $2}'; }
+
+do_check() {
+  local host="$1" d saved now rcpt want ok=yes
+  d="$(dir "$host")"
+  [ -f "$d/ssh_host_ed25519_key.pub" ] || die "nothing saved for $host in $d"
+  saved="$(awk '{print $1, $2}' "$d/ssh_host_ed25519_key.pub")"
+  now="$(presented_key)"
+  [ -n "$now" ] || die "$target presents no ed25519 host key (is Remote Login on?)"
+  rcpt="$(ssh-to-age <<<"$saved")"
+  echo "saved key:     $(fingerprint "$saved")  (age recipient $rcpt)"
+  echo "$target presents: $(fingerprint "$now")"
+  if [ "$now" = "$saved" ]; then echo "  the same key"; else echo "  NOT the saved key" >&2; ok=no; fi
+  if [ -f "$d/age-recipient" ] && [ "$(cat "$d/age-recipient")" != "$rcpt" ]; then
+    echo "hosts/$host/age-recipient differs from the saved key's recipient" >&2
+    ok=no
+  fi
+  # The recipient nix-secrets' .sops.yaml has for it, if any.
+  want="$(anchor "$host")"
+  if [ -n "$want" ]; then
+    if [ "$want" = "$rcpt" ]; then echo "  matches &$host in nix-secrets' .sops.yaml"; else echo "  differs from &$host in nix-secrets' .sops.yaml ($want)" >&2; ok=no; fi
+  else
+    echo "  (nix-secrets' .sops.yaml has no &$host recipient)"
+  fi
+  # Recipients elsewhere (tinytrader-ops' inventory.nix secrets.hosts), given with --expect.
+  for want in ${expect[@]+"${expect[@]}"}; do
+    if [ "$want" = "$rcpt" ]; then echo "  matches $want"; else echo "  differs from the expected $want" >&2; ok=no; fi
+  done
+  [ "$ok" = yes ]
+}
+
+case "$cmd" in
+  save | restore | check)
+    [ $# -ge 2 ] || usage
+    host="$1" target="$2"
+    shift 2
+    expect=()
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --expect) [ $# -ge 2 ] || usage; expect+=("$2"); shift 2 ;;
+        *) usage ;;
+      esac
+    done
+    [ "$cmd" = check ] || [ ${#expect[@]} -eq 0 ] || usage
+    case "$host" in */* | .* | "") die "bad HOST: $host" ;; esac
+    ;;
+  operator-key)
+    [ $# -eq 1 ] || usage
+    target="$1"
+    ;;
+  *) usage ;;
+esac
+need ssh ssh-keygen ssh-keyscan sops ssh-to-age base64 tar
+
+case "$cmd" in
+  # ---------------------------------------------------------------------------
+  save)
+    check_secrets
+    d="$(dir "$host")"
+    out="$d/ssh_host_keys.yaml"
+    mkdir -p "$d"
+    remote_tmp
+    # As root: the keys into a tar in the private folder, owned by the user.
+    run "cat > $(q "$tmp")/install.sh" <<EOF
+set -eu
+uid="\$1"
+cd $(q "$ssh_dir")
+set -- ssh_host_*_key
+[ -f ssh_host_ed25519_key ] && [ -f ssh_host_ed25519_key.pub ] || { echo "no ed25519 host key in $ssh_dir" >&2; exit 1; }
+pubs=""
+for k in "\$@"; do [ -f "\$k.pub" ] && pubs="\$pubs \$k.pub"; done
+tar -cf $(q "$tmp")/keys.tar "\$@" \$pubs
+chown "\$uid" $(q "$tmp")/keys.tar
+chmod 600 $(q "$tmp")/keys.tar
+EOF
+    echo "reading $target's host keys (sudo may ask for $target's password)"
+    run_tty "$sudo_cmd sh $(q "$tmp")/install.sh \"\$(id -u)\""
+    # Into sops, encrypted by nix-secrets' .sops.yaml rule for this path.
+    (
+      cd "$secrets"
+      run "base64 < $(q "$tmp")/keys.tar && rm -f $(q "$tmp")/keys.tar" |
+        sops encrypt --filename-override "hosts/$host/ssh_host_keys.yaml" \
+          --input-type binary --output-type yaml /dev/stdin >"$out.tmp"
+    )
+    # Only the operator and recovery keys may decrypt it: never the host.
+    want="$(printf '%s\n' "$(anchor operator)" "$(anchor recovery)" | sort -u)"
+    if [ "$(recipients_of "$out.tmp")" != "$want" ]; then
+      rm -f "$out.tmp"
+      die "the encrypted file's recipients aren't exactly operator and recovery: check nix-secrets' .sops.yaml rule for hosts/*/ssh_host_keys.yaml"
+    fi
+    # It decrypts, and holds the ed25519 key the host presents.
+    pub="$(sops decrypt --input-type yaml --output-type binary "$out.tmp" | base64 -d | tar -xOf - ssh_host_ed25519_key.pub | awk '{print $1, $2}')"
+    [ -n "$pub" ] || { rm -f "$out.tmp"; die "the saved keys don't decrypt to an ed25519 key"; }
+    names="$(sops decrypt --input-type yaml --output-type binary "$out.tmp" | base64 -d | tar -tf - | tr '\n' ' ')"
+    mv "$out.tmp" "$out"
+    printf '%s %s\n' "$pub" "$host" >"$d/ssh_host_ed25519_key.pub"
+    ssh-to-age <<<"$pub" >"$d/age-recipient"
+    echo "saved $names"
+    echo "  into $out (operator and recovery keys only)"
+    echo "  age recipient $(cat "$d/age-recipient")"
+    do_check "$host"
+    echo "Commit it in $secrets: git add hosts/$host && git commit -m 'hosts/$host: its SSH host keys' && git push"
+    ;;
+
+  # ---------------------------------------------------------------------------
+  restore)
+    check_secrets
+    d="$(dir "$host")"
+    in="$d/ssh_host_keys.yaml"
+    [ -f "$in" ] && [ -f "$d/ssh_host_ed25519_key.pub" ] || die "nothing saved for $host in $d (scripts/host-identity save first)"
+    sops decrypt --input-type yaml --output-type binary "$in" >/dev/null || die "can't decrypt $in (the operator key?)"
+    saved="$(awk '{print $1, $2}' "$d/ssh_host_ed25519_key.pub")"
+    now="$(presented_key)"
+    [ -n "$now" ] || die "$target presents no ed25519 host key: turn on Remote Login there (System Settings > General > Sharing)"
+    if [ "$now" = "$saved" ]; then
+      echo "$target already presents $host's saved key"
+      do_check "$host"
+      exit 0
+    fi
+    if [ "$target" != local ]; then
+      # A freshly installed Mac has a new host key, which known_hosts doesn't
+      # have (or has the old one for). Pin the key it presents now, after you
+      # compare it with the Mac's own screen, rather than trusting the network
+      # with the private keys about to be sent.
+      fp="$(fingerprint "$now")"
+      echo "$target presents a new host key: $fp"
+      echo "On that Mac, run:  ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub"
+      printf 'Does it show %s? Type yes to send it the keys: ' "$fp"
+      read -r answer </dev/tty
+      [ "$answer" = yes ] || die "stopped: nothing sent"
+      kh="$(mktemp)"
+      trap 'cleanup; rm -f "$kh"' EXIT
+      printf 'host-identity-target %s\n' "$now" >"$kh"
+      ssh_opts=(-o HostKeyAlias=host-identity-target -o UserKnownHostsFile="$kh" -o StrictHostKeyChecking=yes -o ControlPath=none)
+    fi
+    remote_tmp
+    # As root: the old keys aside into /var/root, the saved ones in place.
+    run "cat > $(q "$tmp")/install.sh" <<EOF
+set -eu
+cd $(q "$tmp")
+mkdir x
+tar -xf keys.tar -C x
+rm -f keys.tar
+aside=$(q "$aside_dir")/ssh-host-keys-before-restore-\$(date +%Y%m%d-%H%M%S)
+mkdir -m 700 -p "\$aside"
+for f in $(q "$ssh_dir")/ssh_host_*_key $(q "$ssh_dir")/ssh_host_*_key.pub; do if [ -f "\$f" ]; then cp -p "\$f" "\$aside"/; fi; done
+for f in x/ssh_host_*_key; do install -o ${owner%%:*} -g ${owner##*:} -m 600 "\$f" $(q "$ssh_dir")/; done
+for f in x/ssh_host_*_key.pub; do install -o ${owner%%:*} -g ${owner##*:} -m 644 "\$f" $(q "$ssh_dir")/; done
+rm -f x/*
+rmdir x
+echo "restored: \$(cd $(q "$ssh_dir") && ls ssh_host_*_key | tr '\n' ' ')(the keys it had: \$aside)"
+EOF
+    sops decrypt --input-type yaml --output-type binary "$in" | base64 -d | run "cat > $(q "$tmp")/keys.tar"
+    echo "installing them (sudo may ask for $target's password)"
+    run_tty "$sudo_cmd sh $(q "$tmp")/install.sh"
+    # From here TARGET presents the saved key: back to the usual known_hosts.
+    ssh_opts=()
+    do_check "$host"
+    ;;
+
+  # ---------------------------------------------------------------------------
+  check)
+    check_secrets
+    do_check "$host"
+    ;;
+
+  # ---------------------------------------------------------------------------
+  operator-key)
+    key="$HOME/Library/Application Support/sops/age/keys.txt"
+    [ -f "$key" ] || die "no operator key here ($key)"
+    # TARGET's sops looks for it in the same place (macOS) or ~/.config (Linux).
+    path='$HOME/Library/Application Support/sops/age/keys.txt'
+    [ "$(run 'uname -s')" = Darwin ] || path='$HOME/.config/sops/age/keys.txt'
+    run "umask 077; f=\"$path\"; if [ -e \"\$f\" ]; then echo exists; else mkdir -p \"\$(dirname \"\$f\")\" && cat > \"\$f.tmp\" && mv \"\$f.tmp\" \"\$f\" && echo copied; fi" <"$key" |
+      while read -r r; do
+        case "$r" in
+          exists) echo "$target already has a key at $path: left as it is" ;;
+          copied) echo "copied the operator key to $target:$path (mode 600)" ;;
+        esac
+      done
+    # The same key there: compare digests, never the key.
+    [ "$(run "shasum -a 256 < \"$path\"" | awk '{print $1}')" = "$(shasum -a 256 <"$key" | awk '{print $1}')" ] &&
+      echo "  it is this Mac's operator key" || { echo "  it is NOT this Mac's operator key" >&2; exit 1; }
+    ;;
+esac
