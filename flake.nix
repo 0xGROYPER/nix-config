@@ -17,8 +17,6 @@
     # The tinytrader deployment (private): the roles machines play in it.
     # Building a host that imports one needs GitHub access to that repo.
     tinytrader-ops = {
-      # m2-rebuild until that branch merges (its darwinModules.mac-mini-m2);
-      # then back to main, and nix flake update tinytrader-ops.
       url = "git+https://github.com/dawson-shay/tinytrader-ops?ref=main";
       inputs.nix-darwin.follows = "nix-darwin";
     };
