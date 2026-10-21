@@ -109,6 +109,26 @@
         email = "292910774+dawson-shay@users.noreply.github.com";
       };
     };
+    # tinytrader-ops' versioned Git hooks (its scripts/hooks: pre-push runs
+    # CI's checks), on in every clone on every machine, instead of running
+    # its scripts/install-hooks once per clone. The relative path resolves
+    # from the root of the worktree the hook runs in, so each checkout and
+    # worktree uses its own copy. Matched by location (~/repos/tinytrader-ops
+    # and its worktrees, wherever they are checked out) and by remote, for a
+    # clone kept anywhere else. A repository's own core.hooksPath, set by
+    # install-hooks, still wins.
+    includes =
+      let
+        hooks = condition: {
+          inherit condition;
+          contents.core.hooksPath = "scripts/hooks";
+        };
+      in
+      map hooks [
+        "gitdir:~/repos/tinytrader-ops/"
+        "hasconfig:remote.*.url:https://github.com/dawson-shay/tinytrader-ops*"
+        "hasconfig:remote.*.url:git@github.com:dawson-shay/tinytrader-ops*"
+      ];
   };
 
 

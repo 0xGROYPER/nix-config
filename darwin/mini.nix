@@ -50,5 +50,9 @@
   # Deploy what merges to tinytrader and tinytrader-ops main, every 5 minutes
   # outside market hours; never the gateways, relays or pead (tinytrader-ops
   # decision 0011). Pause: touch ~/.config/tinytrader/auto-deploy.off
+  # It and the containers run from the deploy checkouts, clones only it
+  # touches (tinytrader-ops.deployRoot, default
+  # ~/.local/share/tinytrader/deploy; decision 0012), so ~/repos is an
+  # ordinary working copy.
   tinytrader-ops.autoDeploy.enable = true;
 }
