@@ -22,7 +22,14 @@
 # What lands in nix-secrets (commit and push it yourself after `save`):
 #   hosts/HOST/ssh_host_keys.yaml        the keys, a tar in a sops file, encrypted
 #                                        to the operator and recovery keys only:
-#                                        never to the host itself (.sops.yaml)
+#                                        never to the host itself (.sops.yaml).
+#                                        A host whose key opens what the operator
+#                                        key must not (the mini: tinytrader-ops
+#                                        decision 0013) gets the recovery key
+#                                        alone, by its own .sops.yaml rule: then
+#                                        `save` can't read the file back to check
+#                                        it, and `restore` needs the recovery key
+#                                        (SOPS_AGE_KEY_FILE=<file with it>)
 #   hosts/HOST/ssh_host_ed25519_key.pub  the public key, plain
 #   hosts/HOST/age-recipient             ssh-to-age of it, plain
 #
@@ -182,21 +189,31 @@ EOF
         sops encrypt --filename-override "hosts/$host/ssh_host_keys.yaml" \
           --input-type binary --output-type yaml /dev/stdin >"$out.tmp"
     )
-    # Only the operator and recovery keys may decrypt it: never the host.
-    want="$(printf '%s\n' "$(anchor operator)" "$(anchor recovery)" | sort -u)"
-    if [ "$(recipients_of "$out.tmp")" != "$want" ]; then
+    # Only the operator and recovery keys may decrypt it, or the recovery key
+    # alone: never the host.
+    have="$(recipients_of "$out.tmp")"
+    if [ "$have" = "$(printf '%s\n' "$(anchor operator)" "$(anchor recovery)" | sort -u)" ]; then
+      who="operator and recovery keys only"
+      # It decrypts, and holds the ed25519 key the host presents.
+      pub="$(sops decrypt --input-type yaml --output-type binary "$out.tmp" | base64 -d | tar -xOf - ssh_host_ed25519_key.pub | awk '{print $1, $2}')"
+      [ -n "$pub" ] || { rm -f "$out.tmp"; die "the saved keys don't decrypt to an ed25519 key"; }
+      names="$(sops decrypt --input-type yaml --output-type binary "$out.tmp" | base64 -d | tar -tf - | tr '\n' ' ')"
+    elif [ "$have" = "$(anchor recovery)" ]; then
+      # The recovery key alone: this Mac can't read it back. The public key
+      # is the one the host presents.
+      who="the recovery key only"
+      pub="$(presented_key)"
+      [ -n "$pub" ] || { rm -f "$out.tmp"; die "$target presents no ed25519 host key"; }
+      names="(not read back: recovery key only)"
+    else
       rm -f "$out.tmp"
-      die "the encrypted file's recipients aren't exactly operator and recovery: check nix-secrets' .sops.yaml rule for hosts/*/ssh_host_keys.yaml"
+      die "the encrypted file's recipients aren't exactly operator and recovery, or recovery alone: check nix-secrets' .sops.yaml rules for hosts/*/ssh_host_keys.yaml"
     fi
-    # It decrypts, and holds the ed25519 key the host presents.
-    pub="$(sops decrypt --input-type yaml --output-type binary "$out.tmp" | base64 -d | tar -xOf - ssh_host_ed25519_key.pub | awk '{print $1, $2}')"
-    [ -n "$pub" ] || { rm -f "$out.tmp"; die "the saved keys don't decrypt to an ed25519 key"; }
-    names="$(sops decrypt --input-type yaml --output-type binary "$out.tmp" | base64 -d | tar -tf - | tr '\n' ' ')"
     mv "$out.tmp" "$out"
     printf '%s %s\n' "$pub" "$host" >"$d/ssh_host_ed25519_key.pub"
     ssh-to-age <<<"$pub" >"$d/age-recipient"
     echo "saved $names"
-    echo "  into $out (operator and recovery keys only)"
+    echo "  into $out ($who)"
     echo "  age recipient $(cat "$d/age-recipient")"
     do_check "$host"
     echo "Commit it in $secrets: git add hosts/$host && git commit -m 'hosts/$host: its SSH host keys' && git push"
@@ -208,7 +225,7 @@ EOF
     d="$(dir "$host")"
     in="$d/ssh_host_keys.yaml"
     [ -f "$in" ] && [ -f "$d/ssh_host_ed25519_key.pub" ] || die "nothing saved for $host in $d (scripts/host-identity save first)"
-    sops decrypt --input-type yaml --output-type binary "$in" >/dev/null || die "can't decrypt $in (the operator key?)"
+    sops decrypt --input-type yaml --output-type binary "$in" >/dev/null || die "can't decrypt $in (the operator key? A recovery-only host's needs SOPS_AGE_KEY_FILE=<the recovery key>)"
     saved="$(awk '{print $1, $2}' "$d/ssh_host_ed25519_key.pub")"
     now="$(presented_key)"
     [ -n "$now" ] || die "$target presents no ed25519 host key: turn on Remote Login there (System Settings > General > Sharing)"
