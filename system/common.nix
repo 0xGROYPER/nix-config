@@ -34,6 +34,11 @@ in
     ]
   );
 
+  # Unfree packages, by name only. Nomad (BSL-licensed, so nixpkgs marks it
+  # unfree): tinytrader-ops' batch scheduler, a server and client on the mini
+  # and later a client on the Linux hosts (its modules/nomad-darwin.nix).
+  nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [ "nomad" ];
+
   # On the tailnet, under networking.hostName (join: `sudo tailscale up`).
   services.tailscale.enable = true;
 
