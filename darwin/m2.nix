@@ -15,7 +15,7 @@
 {
   imports = [
     # Tailscale, SSH by key only, never sleep, tools on PATH, Colima,
-    # sops-nix's key: as on the mini.
+    # sops-nix's key: as on the mini (darwin/common.nix and system/common.nix).
     ./common.nix
   ];
 

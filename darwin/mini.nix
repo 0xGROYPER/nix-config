@@ -12,7 +12,8 @@
 {
   imports = [
     # Hostname-independent machine settings every Mac here shares: Tailscale,
-    # SSH by key only, never sleep, tools on PATH, Colima, sops-nix's key.
+    # SSH by key only, never sleep, tools on PATH, Colima, sops-nix's key
+    # (with what Linux shares too, from system/common.nix).
     ./common.nix
     # The local AI endpoint, a daemon run as you on 127.0.0.1:8317.
     ./ai-proxy.nix

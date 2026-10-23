@@ -16,17 +16,22 @@ setup on every machine, nix-darwin for the Macs' machine level, and NixOS
 ```text
 /etc/nixos/configuration.nix   the X200s's machine config (not in this repo)
 ~/repos/nix-config/
-├── flake.nix          composes everything below into homeConfigurations and darwinConfigurations
+├── flake.nix          composes everything below into homeConfigurations, darwinConfigurations and nixosConfigurations
 ├── flake.lock         pins nixpkgs, Home Manager, nix-darwin, sops-nix, tinytrader-ops and nix-secrets
 ├── home.nix           user config shared by every machine
 ├── hosts/
 │   ├── x200s.nix      user config for the X200s, including launching EXWM
 │   └── mac.nix        macOS user settings (Home Manager owns zsh)
+├── system/
+│   └── common.nix     what every machine's machine config shares, Mac or Linux
 ├── darwin/
 │   ├── common.nix     what every Mac's machine config shares (nix-darwin)
 │   ├── mini.nix       the Mac mini M4's machine config
 │   ├── m2.nix         the Mac mini M2's machine config
 │   └── ai-proxy.nix   the local AI endpoint, a daemon on mini
+├── nixos/
+│   ├── common.nix     what every Linux machine's machine config shares (NixOS)
+│   └── example.nix    nixosConfigurations.example: a stub host, so nix flake check evaluates nixos/common.nix
 ├── pkgs/
 │   ├── ai-proxy.nix   the endpoint: CLIProxyAPI in front of OpenRouter (packages.<system>.ai-proxy)
 │   └── cliproxyapi.nix  CLIProxyAPI's release binary, pinned by checksum
@@ -42,12 +47,26 @@ setup on every machine, nix-darwin for the Macs' machine level, and NixOS
     └── early-init.el
 ```
 
+The machine level is in three layers. `system/common.nix` holds what is the
+same on a Mac and on Linux, with option names both nix-darwin and NixOS
+have (and a `pkgs.stdenv.hostPlatform.isDarwin` guard where they spell one
+differently, as with sshd's settings): the system tools, Tailscale, SSH by key
+only, sops-nix's key, and the timezone (set on NixOS only; the Macs keep
+System Settings'). `darwin/common.nix` and `nixos/common.nix` each import it
+and add what differs by platform: launchd or systemd services, `/etc/paths.d`
+on the Mac, power management, and containers (Colima's VM on a Mac, the Docker
+engine natively on Linux). A host's own file (`darwin/mini.nix`,
+`nixos/example.nix`) imports its platform's `common.nix` and adds its name,
+users, authorized keys and what it alone runs.
+
 Responsibilities:
 
 * `/etc/nixos/configuration.nix`: machine/system configuration on the X200s: kernel, bootloader, networking, Xorg, services, hardware.
 * `home.nix`: user configuration shared across machines: CLI tools, Git/GitHub, Emacs and Emacs packages, SSH config, and `~/.cargo/config.toml`, which points every checkout's Rust builds at one folder (`~/.cache/cargo-target`) so worktrees don't each leave a `target/` behind.
 * `hosts/x200s.nix`, `hosts/mac.nix`: per-platform user settings.
-* `darwin/common.nix`: the machine configuration every Mac here shares (nix-darwin), the Mac counterpart of `/etc/nixos/configuration.nix`: Tailscale, SSH (keys only), power (never sleeps, restarts after a power cut), system tools, sops-nix's key, and Colima, which runs the Docker engine as a boot daemon (`org.nixos.colima`), so containers come back after a reboot without anyone logging in (each Mac sizes its VM with `local.colima`).
+* `system/common.nix`: the machine configuration every machine shares, Mac or Linux: system tools, Tailscale, SSH (keys only), sops-nix's key, the timezone.
+* `darwin/common.nix`: the rest of what every Mac here shares (nix-darwin), the counterpart of `nixos/common.nix`: Tailscale's resolver file, power (never sleeps, restarts after a power cut), nix-darwin's tools on PATH, the container tools, and Colima, which runs the Docker engine as a boot daemon (`org.nixos.colima`), so containers come back after a reboot without anyone logging in (each Mac sizes its VM with `local.colima`).
+* `nixos/common.nix`: the rest of what every Linux machine shares (NixOS): Nix with flakes, Docker natively, never sleeping. Only `nixosConfigurations.example` uses it so far; the X200s is still on `/etc/nixos/configuration.nix`.
 * `darwin/mini.nix`: the Mac mini M4's: its name, user, SSH keys, Colima's size, and the local AI endpoint (`darwin/ai-proxy.nix`, below), whose secrets sops-nix decrypts.
 * `darwin/m2.nix`: the Mac mini M2's (the NAS and job runner, account `daws`): its name, user, SSH keys and Colima's size. Its user config is `daws@mac`.
 * `emacs/init.el`: portable Emacs behavior and package configuration.
@@ -256,7 +275,7 @@ home.packages = [
 ];
 ```
 
-Machine-level packages and services belong in the machine config: `/etc/nixos/configuration.nix` on the X200s, `darwin/common.nix` for every Mac, `darwin/mini.nix` or `darwin/m2.nix` for one.
+Machine-level packages and services belong in the machine config: `/etc/nixos/configuration.nix` on the X200s, `system/common.nix` for every machine, `darwin/common.nix` for every Mac, `nixos/common.nix` for every NixOS host, `darwin/mini.nix` or `darwin/m2.nix` for one.
 
 Emacs packages are installed by Home Manager:
 

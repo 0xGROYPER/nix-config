@@ -1,12 +1,13 @@
 # What every Mac here shares at the machine level (nix-darwin), imported by
 # each Mac's own file (darwin/mini.nix, darwin/m2.nix), which adds its name,
-# its user and what it alone runs.
+# its user and what it alone runs. What Linux shares too (tools, Tailscale,
+# SSH by key only, sops-nix's key) is in system/common.nix; this is what's
+# Mac-only:
 #
 #   Nix managed by Determinate Nix; the shells' /etc files left alone (Home
 #   Manager owns zsh); nix-darwin's tools on PATH through /etc/paths.d;
-#   Tailscale (tailscaled); SSH in by key only; the secrets and container
-#   tools; Colima as a boot daemon (sized by local.colima); never sleeps;
-#   sops-nix decrypting with the SSH host key.
+#   tailscaled's resolver file; the container tools; Colima as a boot daemon
+#   (sized by local.colima); never sleeps.
 {
   config,
   pkgs,
@@ -33,14 +34,9 @@ in
     };
   };
 
-  config = {
-    # sops-nix (secrets from the private nix-secrets input): decrypt with this
-    # Mac's SSH host key, as an age key (its recipient is in nix-secrets'
-    # .sops.yaml). Not the RSA host key as a GPG key, sops-nix's other default.
-    # The key survives a wipe: scripts/host-identity.
-    sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
-    sops.gnupg.sshKeyPaths = [ ];
+  imports = [ ../system/common.nix ];
 
+  config = {
     nixpkgs.hostPlatform = "aarch64-darwin";
     system.stateVersion = 6;
     # Determinate Nix manages Nix itself.
@@ -63,17 +59,10 @@ in
         /usr/local/libexec/docker/cli-plugins/docker-buildx
     '';
 
-    # Secrets tools (tinytrader-ops decision 0004: sops files, age keys, and
-    # ssh-to-age for host identities), and tmux for long-running jobs.
+    # Containers: Colima runs the Docker engine in a lightweight VM (no
+    # Docker Desktop); docker, compose and buildx are the client side.
     # (mkAfter: listed after nix-darwin's own, as when this was in mini.nix.)
     environment.systemPackages = lib.mkAfter (with pkgs; [
-      age
-      jq
-      sops
-      ssh-to-age
-      tmux
-      # Containers: Colima runs the Docker engine in a lightweight VM (no
-      # Docker Desktop); docker, compose and buildx are the client side.
       colima
       docker-client
       docker-compose
@@ -108,24 +97,11 @@ in
         };
       };
 
-    # On the tailnet, under networking.hostName (join: `sudo tailscale up`).
-    services.tailscale.enable = true;
-    # nix-darwin's module links /etc/resolver/ts.net into /etc/static, but
-    # tailscaled (1.102+) writes /etc/resolver itself and refuses to follow a
-    # symlink out of it ("openat ts.net: path escapes from parent"), so its
-    # DNS setup fails. Let tailscaled own the file.
+    # Tailscale (enabled in system/common.nix): nix-darwin's module links
+    # /etc/resolver/ts.net into /etc/static, but tailscaled (1.102+) writes
+    # /etc/resolver itself and refuses to follow a symlink out of it ("openat
+    # ts.net: path escapes from parent"), so its DNS setup fails. Let tailscaled own the file.
     environment.etc."resolver/ts.net".enable = lib.mkForce false;
-
-    # SSH in from the other machines, by key only (each Mac's file lists the
-    # keys, in users.users.<you>.openssh.authorizedKeys).
-    services.openssh = {
-      enable = true;
-      extraConfig = ''
-        PasswordAuthentication no
-        KbdInteractiveAuthentication no
-        PermitRootLogin no
-      '';
-    };
 
     # Long jobs: the computer never sleeps (the display still does), and it
     # comes back after a power cut.

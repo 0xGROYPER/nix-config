@@ -1,5 +1,5 @@
 {
-  description = "My machines: Home Manager everywhere, nix-darwin for the Macs";
+  description = "My machines: Home Manager everywhere, nix-darwin for the Macs, NixOS for Linux";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
@@ -128,6 +128,19 @@
             # Its part in tinytrader: the store, alpaca-history, the monitor,
             # node_exporter, the backups.
             tinytrader-ops.darwinModules.mac-mini-m2
+          ];
+        };
+      };
+
+      # Machine-level configuration for Linux (NixOS), sharing system/common.nix
+      # with the Macs. The X200s's is still /etc/nixos/configuration.nix.
+      nixosConfigurations = {
+        # Not a machine: proof that nixos/common.nix evaluates (a VM's
+        # hardware). nix flake check evaluates it.
+        example = nixpkgs.lib.nixosSystem {
+          modules = [
+            sops-nix.nixosModules.sops
+            ./nixos/example.nix
           ];
         };
       };
