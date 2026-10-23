@@ -40,6 +40,9 @@
     # cli tools 
     pkgs.tree
 
+    # python: uv (Astral), for tinytrader-ops' pyproject.toml/uv.lock
+    pkgs.uv
+
     # rust dev stuff 
     pkgs.cargo
     pkgs.rustc
