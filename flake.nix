@@ -94,7 +94,7 @@
 
       # The local AI endpoint (darwin/ai-proxy.nix runs it on mini), to run
       # or try by hand: nix run .#ai-proxy, nix run .#cliproxyapi.
-      packages = nixpkgs.lib.genAttrs [ "aarch64-darwin" "x86_64-darwin" "aarch64-linux" "x86_64-linux" ] (
+      packages = nixpkgs.lib.genAttrs [ "aarch64-darwin" "aarch64-linux" "x86_64-linux" ] (
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
