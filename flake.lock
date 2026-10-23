@@ -246,11 +246,11 @@
         "tinytrader": "tinytrader"
       },
       "locked": {
-        "lastModified": 1792974166,
-        "narHash": "sha256-nufZPuSkhKaMD26gGNpwlVZnCiGx9MCofK1wGP3kZ9M=",
+        "lastModified": 1792980772,
+        "narHash": "sha256-UyljeKJXdCnxKTN5B7Qj8PjFRepWtsFc7IANnrGt8G4=",
         "ref": "main",
-        "rev": "d682f48801799be89ce284e8796df3cbf79d9b98",
-        "revCount": 225,
+        "rev": "68e508c5c4ff043224f90f4f90e0d61a907f07e0",
+        "revCount": 227,
         "type": "git",
         "url": "https://github.com/dawson-shay/tinytrader-ops"
       },
