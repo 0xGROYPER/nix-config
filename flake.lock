@@ -76,11 +76,11 @@
     },
     "nix-secrets": {
       "locked": {
-        "lastModified": 1792194593,
-        "narHash": "sha256-fQHMCF4snP8ca7ga2rs3g2lhpHLhJFd3OZs8MbrZnGM=",
+        "lastModified": 1792724428,
+        "narHash": "sha256-J62qf2b1kcRd7vC9O1ladt1se75HA90h/JYTfylArzA=",
         "ref": "main",
-        "rev": "75e1787cae72e1b3b3f7fff1f83b1b5d3698b1e5",
-        "revCount": 1,
+        "rev": "59b948d65af5e3df0e994a03304abd83de089825",
+        "revCount": 3,
         "type": "git",
         "url": "https://github.com/dawson-shay/nix-secrets"
       },
@@ -218,11 +218,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1792446930,
-        "narHash": "sha256-9UFHMSsavXqoBuh3fiY2pIKcDhCFEzpHE6DXNj7ubw0=",
+        "lastModified": 1792724666,
+        "narHash": "sha256-GMDXVlo0NpKp2sxKS1y/TzUqmTrU4igXvE8k2h4KiPI=",
         "ref": "main",
-        "rev": "1f8337b1eb2453f1e4be2754ab5fc2b806ef4ae5",
-        "revCount": 392,
+        "rev": "dd1bdff5bdd1ebda9149b43423bc6ebdd076ce89",
+        "revCount": 430,
         "type": "git",
         "url": "https://github.com/dawson-shay/tinytrader"
       },
@@ -246,11 +246,11 @@
         "tinytrader": "tinytrader"
       },
       "locked": {
-        "lastModified": 1792552338,
-        "narHash": "sha256-BuL4spcw5x1ZnfyeiQsz7eP1PoMg6//e5/gcQBly4HI=",
+        "lastModified": 1792726827,
+        "narHash": "sha256-LqUJmDNIPw0CwzMfpJmNituRsuU36QR2lZxTIRPYGl0=",
         "ref": "main",
-        "rev": "59462522985889786cdc9b99ef4d3b6d182f18a3",
-        "revCount": 203,
+        "rev": "231498ab7b35fe541acc73c54132f10aff1ec0c7",
+        "revCount": 210,
         "type": "git",
         "url": "https://github.com/dawson-shay/tinytrader-ops"
       },
