@@ -34,6 +34,13 @@
     disk = 100;
   };
 
+  # The k3s trial VM (local.colimaK8s, darwin/common.nix), beside the default
+  # one: 4 CPUs, 4 GiB, 40 GiB, nixpkgs' k3s by default. Off until the trial
+  # is accepted. Before turning it on, delete the hand-started trial profile
+  # (colima delete -p k8s): it runs another k3s patch release, and the daemon
+  # makes a fresh one (then re-apply tinytrader-ops deploy/k8s, its README).
+  local.colimaK8s.enable = false;
+
   # The keys allowed in (public keys only; the backup module adds the M2's).
   users.users.dawsonshay.openssh.authorizedKeys.keys = [
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKAL6Lsp876QwJzwyhOxt4vutaFD0gL8y2q6QiysuNnP daws@macbook-air"

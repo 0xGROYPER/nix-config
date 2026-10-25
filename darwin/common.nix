@@ -7,7 +7,8 @@
 #   Nix managed by Determinate Nix; the shells' /etc files left alone (Home
 #   Manager owns zsh); nix-darwin's tools on PATH through /etc/paths.d;
 #   tailscaled's resolver file; the container tools; Colima as a boot daemon
-#   (sized by local.colima); never sleeps.
+#   (sized by local.colima), and optionally a second Colima VM running k3s
+#   (local.colimaK8s, off by default); never sleeps.
 {
   config,
   pkgs,
@@ -17,6 +18,7 @@
 let
   inherit (lib) mkOption types;
   vm = config.local.colima;
+  k8s = config.local.colimaK8s;
 in
 {
   options.local.colima = {
@@ -31,6 +33,36 @@ in
     disk = mkOption {
       type = types.ints.positive;
       description = "Colima's VM disk, in GiB (a sparse file: it takes what is used).";
+    };
+  };
+
+  # A second Colima VM, profile "k8s", running k3s on containerd: the batch
+  # scheduler (tinytrader-ops docs/batch-jobs.md "Target design",
+  # deploy/k8s/). Its own VM, so starting, stopping or deleting it never
+  # touches the default profile's Docker and the containers there.
+  options.local.colimaK8s = {
+    enable = lib.mkEnableOption "a second Colima VM (profile k8s) running k3s";
+    cpu = mkOption {
+      type = types.ints.positive;
+      default = 4;
+      description = "CPUs for the k8s VM.";
+    };
+    memory = mkOption {
+      type = types.ints.positive;
+      default = 4;
+      description = "Memory for the k8s VM, in GiB.";
+    };
+    disk = mkOption {
+      type = types.ints.positive;
+      default = 40;
+      description = "The k8s VM's disk, in GiB (sparse).";
+    };
+    kubernetesVersion = mkOption {
+      type = types.str;
+      # nixpkgs' k3s, so Linux hosts joining later (services.k3s) match.
+      default = "v${pkgs.k3s.version}";
+      defaultText = lib.literalExpression ''"v''${pkgs.k3s.version}"'';
+      description = "The k3s release Colima installs (https://github.com/k3s-io/k3s/releases).";
     };
   };
 
@@ -67,7 +99,7 @@ in
       docker-client
       docker-compose
       docker-buildx
-    ]);
+    ] ++ lib.optional k8s.enable kubectl);
 
     # Colima starts at boot and stays up: a system daemon run as the primary
     # user, so the containers come back after a reboot or power cut without
@@ -96,6 +128,34 @@ in
           StandardErrorPath = "${home}/Library/Logs/colima.err.log";
         };
       };
+
+    # The k8s profile, the same way: a boot daemon as the primary user. k3s
+    # on containerd (no second Docker engine); --activate=false leaves the
+    # docker CLI's context on the default profile (it adds kubectl's
+    # colima-k8s context). Colima checks for kubectl on PATH before starting
+    # k3s, hence kubectl above.
+    launchd.daemons.colima-k8s = lib.mkIf k8s.enable (
+      let
+        user = config.system.primaryUser;
+        home = "/Users/${user}";
+      in
+      {
+        command = "${pkgs.colima}/bin/colima start --foreground --profile k8s --runtime containerd --kubernetes --kubernetes-version ${k8s.kubernetesVersion} --activate=false --vm-type vz --mount-type virtiofs --mount ${home}:w --cpu ${toString k8s.cpu} --memory ${toString k8s.memory} --disk ${toString k8s.disk}";
+        serviceConfig = {
+          UserName = user;
+          GroupName = "staff";
+          RunAtLoad = true;
+          KeepAlive = true;
+          EnvironmentVariables = {
+            HOME = home;
+            USER = user;
+            PATH = "/run/current-system/sw/bin:/usr/bin:/bin:/usr/sbin:/sbin";
+          };
+          StandardOutPath = "${home}/Library/Logs/colima-k8s.out.log";
+          StandardErrorPath = "${home}/Library/Logs/colima-k8s.err.log";
+        };
+      }
+    );
 
     # Tailscale (enabled in system/common.nix): nix-darwin's module links
     # /etc/resolver/ts.net into /etc/static, but tailscaled (1.102+) writes
