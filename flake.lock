@@ -232,6 +232,42 @@
         "url": "https://github.com/dawson-shay/tinytrader"
       }
     },
+    "tinytrader-deploy": {
+      "inputs": {
+        "nix-darwin": [
+          "tinytrader-ops",
+          "nix-darwin"
+        ],
+        "nixpkgs": [
+          "tinytrader-ops",
+          "tinytrader-deploy",
+          "tinytrader",
+          "nixpkgs"
+        ],
+        "sops-nix": [
+          "tinytrader-ops",
+          "sops-nix"
+        ],
+        "tinytrader": [
+          "tinytrader-ops",
+          "tinytrader"
+        ]
+      },
+      "locked": {
+        "lastModified": 1792983906,
+        "narHash": "sha256-+cqDUcNwQcxafWJeamTPoHQyiYvnnWwY3xJklm4FKUc=",
+        "ref": "main",
+        "rev": "8b52dab6e625bc4aeecc8e0f8c24b240bb0715fb",
+        "revCount": 1,
+        "type": "git",
+        "url": "https://github.com/dawson-shay/tinytrader-deploy"
+      },
+      "original": {
+        "ref": "main",
+        "type": "git",
+        "url": "https://github.com/dawson-shay/tinytrader-deploy"
+      }
+    },
     "tinytrader-ops": {
       "inputs": {
         "nix-darwin": [
@@ -243,14 +279,15 @@
           "nixpkgs"
         ],
         "sops-nix": "sops-nix_2",
-        "tinytrader": "tinytrader"
+        "tinytrader": "tinytrader",
+        "tinytrader-deploy": "tinytrader-deploy"
       },
       "locked": {
-        "lastModified": 1792980772,
-        "narHash": "sha256-UyljeKJXdCnxKTN5B7Qj8PjFRepWtsFc7IANnrGt8G4=",
+        "lastModified": 1792983921,
+        "narHash": "sha256-9qln/V93KJcTaMH/vy76qHigeZXUfdzquOXp7/c3fsE=",
         "ref": "main",
-        "rev": "68e508c5c4ff043224f90f4f90e0d61a907f07e0",
-        "revCount": 227,
+        "rev": "7c8ec8f4895c65fb8a207d3c24822fbc2e262359",
+        "revCount": 232,
         "type": "git",
         "url": "https://github.com/dawson-shay/tinytrader-ops"
       },
