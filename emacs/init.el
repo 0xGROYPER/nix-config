@@ -23,7 +23,7 @@
   (server-start))
 
 ;; Claude Code sessions as vterm buffers named *claude: DIR*. They live in
-;; this Emacs, a daemon on each Mac, so `hop HOST' reaches them from anywhere.
+;; this Emacs, a daemon on each Mac: `ssh HOST', then `ec', from anywhere.
 (use-package vterm
   :commands vterm)
 
@@ -41,7 +41,7 @@
         (vterm name)))))
 
 (defun tt-claude-list ()
-  "This Emacs's Claude buffers, separated by | (`hop' with no host)."
+  "This Emacs's Claude buffers, separated by | (`sessions')."
   (mapconcat #'buffer-name
              (seq-filter (lambda (b) (string-prefix-p "*claude: " (buffer-name b)))
                          (buffer-list))
