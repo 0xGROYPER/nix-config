@@ -1,4 +1,6 @@
 # sessions                               every Mac's Claude Code sessions and ai-proxy
+# sessions --json                        the same as one JSON array, a Mac per entry:
+#                                        {host, here, reachable, agents, proxy, providers}
 # sessions send [--from NAME] HOST SESSION TEXT
 #                                        a message to SESSION (its name, session ID
 #                                        or pid) on HOST, over ssh; TEXT - reads stdin.
@@ -25,17 +27,27 @@ on() {
   fi
 }
 
-list() {
+# Each Mac's sessions-here, as {host, here, reachable, ...}, one JSON per line.
+each() {
+  local h out here_now=false
   for h in $hosts; do
-    if ! out="$(on "$h" sessions-here 2>/dev/null)"; then
-      echo "$h: unreachable, or sessions-here isn't installed there yet"
-      continue
+    if here "$h"; then here_now=true; else here_now=false; fi
+    if out="$(on "$h" sessions-here 2>/dev/null)" && jq -e . >/dev/null 2>&1 <<<"$out"; then
+      jq -c --arg h "$h" --argjson here "$here_now" '{host: $h, here: $here, reachable: true} + .' <<<"$out"
+    else
+      jq -cn --arg h "$h" --argjson here "$here_now" '{host: $h, here: $here, reachable: false, agents: [], proxy: "unknown", providers: ""}'
     fi
-    printf '%s\n' "$out" | jq -r --arg h "$h" '
-      "\($h):",
-      (.agents[] | "  claude  \(.name)  \(.status)  \(.kind)  \(.cwd | sub("^/Users/[^/]+"; "~"))"),
-      "  ai-proxy \(.proxy)\(if .providers != "" then " (\(.providers))" else "" end)"'
   done
+}
+
+list() {
+  each | jq -r '
+    if .reachable | not then "\(.host): unreachable, or sessions-here is not installed there yet"
+    else
+      "\(.host):",
+      (.agents[] | "  claude  \(.name)  \(.status)  \(.kind)  \(.cwd | sub("^/Users/[^/]+"; "~"))"),
+      "  ai-proxy \(.proxy)\(if .providers != "" then " (\(.providers))" else "" end)"
+    end'
 }
 
 send() {
@@ -58,6 +70,7 @@ send() {
 
 case "${1:-}" in
   "") list ;;
+  --json) each | jq -s . ;;
   send) shift; send "$@" ;;
-  *) echo "usage: sessions | sessions send [--from NAME] HOST SESSION TEXT|-" >&2; exit 2 ;;
+  *) echo "usage: sessions [--json] | sessions send [--from NAME] HOST SESSION TEXT|-" >&2; exit 2 ;;
 esac
