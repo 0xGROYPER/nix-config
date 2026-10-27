@@ -62,7 +62,7 @@ users, authorized keys and what it alone runs.
 Responsibilities:
 
 * `/etc/nixos/configuration.nix`: machine/system configuration on the X200s: kernel, bootloader, networking, Xorg, services, hardware.
-* `home.nix`: user configuration shared across machines: CLI tools, Git/GitHub, Emacs and Emacs packages, SSH config, and `~/.cargo/config.toml`, which points every checkout's Rust builds at one folder (`~/.cache/cargo-target`) so worktrees don't each leave a `target/` behind.
+* `home.nix`: user configuration shared across machines: CLI tools, Git/GitHub, Emacs and Emacs packages, SSH config, and `cargo` wrapped to build into one folder per repository (`~/.cache/cargo-target/<repo>/target`), shared by its worktrees, so they don't each leave a `target/` behind (tinytrader-deploy's decision 0016).
 * `hosts/x200s.nix`, `hosts/mac.nix`: per-platform user settings.
 * `system/common.nix`: the machine configuration every machine shares, Mac or Linux: system tools, Tailscale, SSH (keys only), sops-nix's key, the timezone.
 * `darwin/common.nix`: the rest of what every Mac here shares (nix-darwin), the counterpart of `nixos/common.nix`: Tailscale's resolver file, power (never sleeps, restarts after a power cut), nix-darwin's tools on PATH, the container tools, and Colima, which runs the Docker engine as a boot daemon (`org.nixos.colima`), so containers come back after a reboot without anyone logging in (each Mac sizes its VM with `local.colima`).
@@ -370,7 +370,6 @@ Treat the repository as the source of truth. Avoid manually mutating generated f
 ```text
 ~/.config/emacs
 ~/.config/git/config
-~/.cargo/config.toml
 ```
 
 Edit their source configuration instead, apply the configuration, test it, then commit the result.
