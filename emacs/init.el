@@ -1,5 +1,18 @@
 ;;; init.el --- Emacs configuration -*- lexical-binding: t; -*-
 
+;; An Emacs opened from the Dock or Finder gets launchd's PATH, without the
+;; Nix profiles or ~/.local/bin (claude, sessions); give it a terminal's, as
+;; the daemon's launchd agent does (hosts/mac.nix).
+(when (eq system-type 'darwin)
+  (dolist (d (reverse (list "~/.local/bin" "~/.nix-profile/bin"
+                            (format "/etc/profiles/per-user/%s/bin" user-login-name)
+                            "/run/current-system/sw/bin"
+                            "/nix/var/nix/profiles/default/bin")))
+    (let ((d (expand-file-name d)))
+      (when (and (file-directory-p d) (not (member d exec-path)))
+        (push d exec-path)
+        (setenv "PATH" (concat d ":" (getenv "PATH")))))))
+
 
 (tool-bar-mode -1)
 (scroll-bar-mode -1)
