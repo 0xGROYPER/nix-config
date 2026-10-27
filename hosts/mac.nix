@@ -43,19 +43,27 @@ in
 
   # Emacs as a daemon from login, kept running, so its buffers outlast any
   # terminal or connection: `ssh HOST`, then `emacsclient -t`, from anywhere.
-  # Started by a login
-  # zsh, so it has a terminal's PATH (claude, the nix tools). A GUI frame is
-  # `emacsclient -c`.
+  # A GUI frame is `emacsclient -c`. launchd gives no shell's PATH, so it gets
+  # a terminal's here (claude, the nix tools). While another Emacs holds the
+  # server (a GUI Emacs started on its own), it retries each minute.
   launchd.agents.emacs = {
     enable = true;
     config = {
       ProgramArguments = [
-        "/bin/zsh"
-        "-lc"
-        "exec ${config.programs.emacs.finalPackage}/bin/emacs --fg-daemon"
+        "${config.programs.emacs.finalPackage}/bin/emacs"
+        "--fg-daemon"
+      ];
+      EnvironmentVariables.PATH = builtins.concatStringsSep ":" [
+        "${config.home.homeDirectory}/.local/bin"
+        "${config.home.homeDirectory}/.nix-profile/bin"
+        "/etc/profiles/per-user/${config.home.username}/bin"
+        "/run/current-system/sw/bin"
+        "/nix/var/nix/profiles/default/bin"
+        "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
       ];
       RunAtLoad = true;
       KeepAlive = true;
+      ThrottleInterval = 60;
       ProcessType = "Interactive";
       StandardOutPath = "${config.home.homeDirectory}/Library/Logs/emacs-daemon.log";
       StandardErrorPath = "${config.home.homeDirectory}/Library/Logs/emacs-daemon.log";
