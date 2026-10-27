@@ -34,6 +34,10 @@ each() {
     if here "$h"; then here_now=true; else here_now=false; fi
     if out="$(on "$h" sessions-here 2>/dev/null)" && jq -e . >/dev/null 2>&1 <<<"$out"; then
       jq -c --arg h "$h" --argjson here "$here_now" '{host: $h, here: $here, reachable: true} + .' <<<"$out"
+    # A Mac without sessions-here (not yet on this configuration): Claude
+    # Code's own list, and nothing about its ai-proxy.
+    elif out="$(on "$h" "claude agents --json" 2>/dev/null)" && jq -e 'type == "array"' >/dev/null 2>&1 <<<"$out"; then
+      jq -c --arg h "$h" --argjson here "$here_now" '{host: $h, here: $here, reachable: true, agents: ., proxy: "unknown", providers: ""}' <<<"$out"
     else
       jq -cn --arg h "$h" --argjson here "$here_now" '{host: $h, here: $here, reachable: false, agents: [], proxy: "unknown", providers: ""}'
     fi
@@ -45,7 +49,7 @@ list() {
     if .reachable | not then "\(.host): unreachable, or sessions-here is not installed there yet"
     else
       "\(.host):",
-      (.agents[] | "  claude  \(.name)  \(.status)  \(.kind)  \(.cwd | sub("^/Users/[^/]+"; "~"))"),
+      (.agents[] | "  claude  \(.name)  \(.status // "-")  \(.kind)  \(.cwd | sub("^/Users/[^/]+"; "~"))"),
       "  ai-proxy \(.proxy)\(if .providers != "" then " (\(.providers))" else "" end)"
     end'
 }
