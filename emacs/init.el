@@ -26,6 +26,9 @@
 (use-package vterm
   :commands vterm)
 
+;; M-x sessions: every Mac's Claude Code sessions (sessions.el).
+(load (expand-file-name "sessions" (file-name-directory (or load-file-name buffer-file-name))) nil t)
+
 (use-package markdown-mode
   :mode "\\.md\\'")
 
