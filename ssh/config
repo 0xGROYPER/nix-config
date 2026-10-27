@@ -9,9 +9,15 @@ Host m2 mac-desktop
     HostName dawsons-mac-mini.tail8aa7c8.ts.net
     User daws
 
+# The MacBook Air (its tailnet name; check it after a reinstall, which may
+# change the -2).
+Host laptop
+    HostName dawsons-macbook-air-2.tail8aa7c8.ts.net
+    User daws
+
 # One connection per host, reused for 10 minutes: Emacs TRAMP, git and repeat
 # ssh commands skip the handshake.
-Host m4 m2 mac-desktop
+Host m4 m2 mac-desktop laptop
     ControlMaster auto
     ControlPath ~/.ssh/cm-%r@%h:%p
     ControlPersist 10m

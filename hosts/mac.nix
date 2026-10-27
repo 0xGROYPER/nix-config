@@ -4,6 +4,7 @@ let
   hosts = [
     "m4"
     "m2"
+    "laptop"
   ];
   # What runs on this Mac, as one JSON object: Claude Code's sessions (claude
   # agents, however they were started), and its ai-proxy
