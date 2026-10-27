@@ -1,5 +1,23 @@
 { config, pkgs, lib, ... }:
 
+let
+  # cargo, building into one target per repository on this machine,
+  # ~/.cache/cargo-target/<repo>/target, <repo> named by the repository's
+  # common Git folder, so every worktree shares its main checkout's
+  # (tinytrader-deploy's scripts/cargo-shim, decision 0016). As the cargo on
+  # PATH it covers every shell, interactive or not, agents' too. A
+  # CARGO_TARGET_DIR already set is kept (the Nomad build jobs set their
+  # own); outside a repository it changes nothing. tinytrader-deploy's
+  # daily disk-hygiene job deletes a target idle for 7 days.
+  cargo = pkgs.writeShellScriptBin "cargo" ''
+    if [ -z "''${CARGO_TARGET_DIR:-}" ] && common="$(${pkgs.git}/bin/git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"; then
+      repo="''${common%/.git}"
+      repo="''${repo##*/}"
+      export CARGO_TARGET_DIR="$HOME/.cache/cargo-target/''${repo%.git}/target"
+    fi
+    exec ${pkgs.cargo}/bin/cargo "$@"
+  '';
+in
 {
   # Home Manager needs a bit of information about you and the paths it should
   # manage.
@@ -43,8 +61,8 @@
     # python: uv (Astral), for tinytrader-ops' pyproject.toml/uv.lock
     pkgs.uv
 
-    # rust dev stuff 
-    pkgs.cargo
+    # rust dev stuff: cargo builds into one target per repository (above)
+    cargo
     pkgs.rustc
     pkgs.rust-analyzer
     pkgs.rustfmt
@@ -163,13 +181,4 @@
   };
 
   xdg.configFile."emacs".source = ./emacs;
-
-  # One Rust build folder for every checkout, so agent worktrees don't each
-  # build a full target/ (0.5-1 GB apiece) and leave it behind. Concurrent
-  # builds wait for cargo's lock on it instead of running in parallel.
-  home.file.".cargo/config.toml".text = ''
-    [build]
-    target-dir = "${config.home.homeDirectory}/.cache/cargo-target"
-  '';
-  
 }
