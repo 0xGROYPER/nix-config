@@ -18,21 +18,19 @@ let
     ${pkgs.jq}/bin/jq -n --argjson agents "$agents" --arg proxy "$proxy" --arg providers "$providers" \
       '{ agents: $agents, proxy: $proxy, providers: $providers }'
   '';
-  # Every Mac's Claude Code sessions and ai-proxy. A Mac's Emacs: `ssh HOST`,
-  # then `emacsclient -t`.
-  sessions = pkgs.writeShellScriptBin "sessions" ''
-    set -u
-    for h in ${toString hosts}; do
-      if ! out="$(ssh -o ConnectTimeout=5 -o BatchMode=yes "$h" "zsh -lc sessions-here" 2>/dev/null)"; then
-        echo "$h: unreachable, or sessions-here isn't installed there yet"
-        continue
-      fi
-      printf '%s\n' "$out" | ${pkgs.jq}/bin/jq -r --arg h "$h" '
-        "\($h):",
-        (.agents[] | "  claude  \(.name)  \(.status)  \(.kind)  \(.cwd | sub("^/Users/[^/]+"; "~"))"),
-        "  ai-proxy \(.proxy)\(if .providers != "" then " (\(.providers))" else "" end)"'
-    done
-  '';
+  # Every Mac's Claude Code sessions and ai-proxy, and messages between
+  # sessions on different Macs over Tailscale ssh (scripts/sessions).
+  sessions = pkgs.writeShellApplication {
+    name = "sessions";
+    runtimeInputs = [ pkgs.jq ];
+    runtimeEnv.SESSIONS_HOSTS = toString hosts;
+    text = builtins.readFile ../scripts/sessions/sessions.sh;
+  };
+  sessions-deliver = pkgs.writeShellApplication {
+    name = "sessions-deliver";
+    runtimeInputs = [ pkgs.jq ];
+    text = builtins.readFile ../scripts/sessions/sessions-deliver.sh;
+  };
 in
 {
   # MacOS-specific user packages/settings go here.
@@ -40,6 +38,7 @@ in
   home.packages = [
     sessions
     sessions-here
+    sessions-deliver
   ];
 
   # Emacs as a daemon from login, kept running, so its buffers outlast any
