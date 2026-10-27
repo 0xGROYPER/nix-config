@@ -6,21 +6,20 @@ let
     "m2"
   ];
   # What runs on this Mac, as one JSON object: Claude Code's sessions (claude
-  # agents), the Claude buffers in its Emacs (tt-claude), and its ai-proxy
+  # agents, however they were started), and its ai-proxy
   # (CLIProxyAPI): whether it answers, and its sign-ins by provider (from the
   # auth files' names, never their contents).
   sessions-here = pkgs.writeShellScriptBin "sessions-here" ''
     set -u
     agents="$(claude agents --json 2>/dev/null)" || agents='[]'
-    buffers="$(emacsclient --eval '(tt-claude-list)' 2>/dev/null | sed -e 's/^"//' -e 's/"$//')" || buffers=""
     code="$(curl -s -o /dev/null -m 2 -w '%{http_code}' http://127.0.0.1:8317/ 2>/dev/null)" || code=000
     proxy=down; [ "$code" = 000 ] || proxy=up
-    providers="$(ls "$HOME/.local/state/ai-proxy/auth" 2>/dev/null | sed 's/-.*//' | sort | uniq -c | awk '{ print $2 " " $1 }' | paste -sd, -)" || providers=""
-    ${pkgs.jq}/bin/jq -n --argjson agents "$agents" --arg buffers "$buffers" --arg proxy "$proxy" --arg providers "$providers" \
-      '{ agents: $agents, buffers: ($buffers | split("|") | map(select(. != ""))), proxy: $proxy, providers: $providers }'
+    providers="$(cd "$HOME/.local/state/ai-proxy/auth" 2>/dev/null && ls -- *.json 2>/dev/null | sed 's/-.*//' | sort | uniq -c | awk '{ print $2 " " $1 }' | paste -sd, -)" || providers=""
+    ${pkgs.jq}/bin/jq -n --argjson agents "$agents" --arg proxy "$proxy" --arg providers "$providers" \
+      '{ agents: $agents, proxy: $proxy, providers: $providers }'
   '';
-  # Every Mac's sessions: Claude Code sessions (`claude attach NAME` there, or
-  # `ssh HOST` then `ec` for its Emacs), Emacs's Claude buffers, and ai-proxy.
+  # Every Mac's Claude Code sessions and ai-proxy. A Mac's Emacs: `ssh HOST`,
+  # then `emacsclient -t`.
   sessions = pkgs.writeShellScriptBin "sessions" ''
     set -u
     for h in ${toString hosts}; do
@@ -31,7 +30,6 @@ let
       printf '%s\n' "$out" | ${pkgs.jq}/bin/jq -r --arg h "$h" '
         "\($h):",
         (.agents[] | "  claude  \(.name)  \(.status)  \(.kind)  \(.cwd | sub("^/Users/[^/]+"; "~"))"),
-        (.buffers[] | "  emacs   \(.)"),
         "  ai-proxy \(.proxy)\(if .providers != "" then " (\(.providers))" else "" end)"'
     done
   '';
@@ -44,9 +42,9 @@ in
     sessions-here
   ];
 
-  # Emacs as a daemon from login, kept running: Claude sessions live in its
-  # vterm buffers (emacs/init.el, tt-claude), so they outlast any terminal or
-  # connection: `ssh HOST`, then `ec`, from anywhere. Started by a login
+  # Emacs as a daemon from login, kept running, so its buffers outlast any
+  # terminal or connection: `ssh HOST`, then `emacsclient -t`, from anywhere.
+  # Started by a login
   # zsh, so it has a terminal's PATH (claude, the nix tools). A GUI frame is
   # `emacsclient -c`.
   launchd.agents.emacs = {
@@ -78,8 +76,6 @@ in
 
   programs.zsh = {
     enable = true;
-    # This Mac's Emacs (its daemon) in this terminal; started if it isn't running.
-    shellAliases.ec = "emacsclient -t -a ''";
     history = {
       size = 100000;
       save = 100000;

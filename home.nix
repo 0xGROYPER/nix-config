@@ -174,7 +174,7 @@ in
       epkgs.rust-mode
       epkgs.tree-sitter-langs
       epkgs.markdown-mode
-      epkgs.vterm # Claude sessions as buffers (emacs/init.el, tt-claude)
+      epkgs.vterm # a terminal in Emacs
       # epkgs.treesit-grammars.with-rust-grammar
     ] ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
       epkgs.exwm
