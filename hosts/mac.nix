@@ -70,6 +70,9 @@ in
   # MacOS-specific user packages/settings go here.
 
   home.packages = [
+    pkgs.julia-bin # the upstream build
+    pkgs.ollama # local models; `ollama serve` when wanted
+    pkgs.zed-editor
     sessions
     sessions-here
     sessions-deliver

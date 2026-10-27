@@ -57,6 +57,14 @@ in
 
     # cli tools 
     pkgs.tree
+    pkgs.ripgrep
+    pkgs.duckdb
+    pkgs.cloc
+    pkgs.poppler-utils # pdftotext and friends
+    pkgs.git-filter-repo
+    pkgs.cmake
+    pkgs.nodejs
+    pkgs.python3 # a base interpreter; projects pin theirs with uv
 
     # python: uv (Astral), for tinytrader-ops' pyproject.toml/uv.lock
     pkgs.uv
