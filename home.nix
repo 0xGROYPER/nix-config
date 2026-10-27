@@ -182,4 +182,7 @@ in
   };
 
   xdg.configFile."emacs".source = ./emacs;
+
+  # Claude Code's user-wide instructions: how sessions work across the Macs.
+  home.file.".claude/CLAUDE.md".source = ./claude/CLAUDE.md;
 }
