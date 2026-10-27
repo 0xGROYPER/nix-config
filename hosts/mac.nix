@@ -36,15 +36,21 @@ let
   # daemon, its buffers and sessions running. Home Manager puts it in
   # ~/Applications/Home Manager Apps.
   emacs = config.programs.emacs.finalPackage;
+  emacs-client-launcher = pkgs.writeCBin "emacs-client" ''
+    #include <unistd.h>
+    int main(void) {
+      execl("${emacs}/bin/emacsclient", "emacsclient", "-c", "-n", "-a", "",
+            "-e", "(select-frame-set-input-focus (selected-frame))", (char *) 0);
+      return 127;
+    }
+  '';
   emacs-client-app = pkgs.runCommand "emacs-client-app" { } ''
     app="$out/Applications/Emacs Client.app/Contents"
     mkdir -p "$app/MacOS" "$app/Resources"
     cp ${emacs}/Applications/Emacs.app/Contents/Resources/Emacs.icns "$app/Resources/"
-    cat > "$app/MacOS/emacs-client" <<'SH'
-    #!/bin/sh
-    exec ${emacs}/bin/emacsclient -c -n -a "" -e '(select-frame-set-input-focus (selected-frame))'
-    SH
-    chmod +x "$app/MacOS/emacs-client"
+    # A native launcher: macOS takes an app whose executable is a script for
+    # an Intel one and asks for Rosetta.
+    cp ${emacs-client-launcher}/bin/emacs-client "$app/MacOS/emacs-client"
     cat > "$app/Info.plist" <<'PLIST'
     <?xml version="1.0" encoding="UTF-8"?>
     <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
