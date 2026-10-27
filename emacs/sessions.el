@@ -108,11 +108,12 @@ after it has stopped in its terminal (otherwise it starts a copy)."
         (message "%s" out)
         (revert-buffer))))))
 
-(defvar-keymap sessions-mode-map
-  :parent tabulated-list-mode-map
-  "RET" #'sessions-open
-  "b" #'sessions-background
-  "c" #'sessions-start)
+(defvar sessions-mode-map (make-sparse-keymap)
+  "Keys of `sessions-mode'; set each load, so reloading updates them.")
+(set-keymap-parent sessions-mode-map tabulated-list-mode-map)
+(keymap-set sessions-mode-map "RET" #'sessions-open)
+(keymap-set sessions-mode-map "b" #'sessions-background)
+(keymap-set sessions-mode-map "c" #'sessions-start)
 
 (define-derived-mode sessions-mode tabulated-list-mode "Sessions"
   "Every Mac's Claude Code sessions."
