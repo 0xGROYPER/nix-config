@@ -121,6 +121,22 @@ in
     "/run/current-system/sw/bin"
   ];
 
+  # Ghostty, the terminal: GPU-rendered, true colour, mouse and the kitty
+  # graphics protocol, so `ssh m4` then `emacsclient -t` is close to the GUI.
+  # Option is Meta for Emacs; over ssh it installs its terminfo on the other
+  # host the first time (or falls back to xterm-256color), so Emacs there
+  # gets its colours and keys right.
+  programs.ghostty = {
+    enable = true;
+    package = pkgs.ghostty-bin;
+    settings = {
+      macos-option-as-alt = true;
+      shell-integration-features = "ssh-env,ssh-terminfo";
+      mouse-hide-while-typing = true;
+      window-save-state = "always";
+    };
+  };
+
   programs.zsh = {
     enable = true;
     history = {
