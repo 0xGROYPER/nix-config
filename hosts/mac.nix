@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 let
   # The Macs `sessions` asks, by their ssh names (ssh/config, over Tailscale).
   hosts = [
@@ -74,6 +74,12 @@ in
   # A GUI frame is `emacsclient -c`. launchd gives no shell's PATH, so it gets
   # a terminal's here (claude, the nix tools). While another Emacs holds the
   # server (a GUI Emacs started on its own), it retries each minute.
+  # A switch updates emacs/sessions.el; a running Emacs reloads it then, so
+  # M-x sessions needs no restart. Nothing else is reloaded.
+  home.activation.reloadEmacsSessions = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+    ${emacs}/bin/emacsclient --eval '(load (expand-file-name "sessions" user-emacs-directory) nil t)' >/dev/null 2>&1 || true
+  '';
+
   launchd.agents.emacs = {
     enable = true;
     config = {
