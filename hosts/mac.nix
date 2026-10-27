@@ -31,6 +31,33 @@ let
     runtimeInputs = [ pkgs.jq ];
     text = builtins.readFile ../scripts/sessions/sessions-deliver.sh;
   };
+  # A Dock app opening a window onto the Emacs daemon (emacsclient -c),
+  # starting the daemon if it isn't running. Closing its window leaves the
+  # daemon, its buffers and sessions running. Home Manager puts it in
+  # ~/Applications/Home Manager Apps.
+  emacs = config.programs.emacs.finalPackage;
+  emacs-client-app = pkgs.runCommand "emacs-client-app" { } ''
+    app="$out/Applications/Emacs Client.app/Contents"
+    mkdir -p "$app/MacOS" "$app/Resources"
+    cp ${emacs}/Applications/Emacs.app/Contents/Resources/Emacs.icns "$app/Resources/"
+    cat > "$app/MacOS/emacs-client" <<'SH'
+    #!/bin/sh
+    exec ${emacs}/bin/emacsclient -c -n -a "" -e '(select-frame-set-input-focus (selected-frame))'
+    SH
+    chmod +x "$app/MacOS/emacs-client"
+    cat > "$app/Info.plist" <<'PLIST'
+    <?xml version="1.0" encoding="UTF-8"?>
+    <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+    <plist version="1.0"><dict>
+      <key>CFBundleExecutable</key><string>emacs-client</string>
+      <key>CFBundleIconFile</key><string>Emacs</string>
+      <key>CFBundleIdentifier</key><string>org.nix-config.emacs-client</string>
+      <key>CFBundleName</key><string>Emacs Client</string>
+      <key>CFBundlePackageType</key><string>APPL</string>
+      <key>LSUIElement</key><true/>
+    </dict></plist>
+    PLIST
+  '';
 in
 {
   # MacOS-specific user packages/settings go here.
@@ -39,6 +66,7 @@ in
     sessions
     sessions-here
     sessions-deliver
+    emacs-client-app
   ];
 
   # Emacs as a daemon from login, kept running, so its buffers outlast any

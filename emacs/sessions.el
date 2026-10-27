@@ -3,10 +3,12 @@
 ;; M-x sessions lists what `sessions --json' (hosts/mac.nix) finds on every
 ;; Mac. RET opens a background session (claude --bg) in a vterm buffer,
 ;; attached over ssh when it runs on another Mac; c starts a background
-;; session on a Mac; g refreshes. Sessions started in a terminal are listed
-;; but can't be attached from here.
+;; session on a Mac; b moves a session started in a terminal to the
+;; background once you've quit it there (claude --bg --resume), so it opens
+;; from here; g refreshes.
 
 (require 'tabulated-list)
+(defvar vterm-shell)  ; vterm's, bound around (vterm) below
 
 (defvar sessions--here nil
   "The Macs the last refresh found to be this one.")
@@ -28,11 +30,11 @@
       (let ((host (alist-get 'host m)))
         (when (alist-get 'here m) (push host sessions--here))
         (if (not (alist-get 'reachable m))
-            (push (list (list host nil nil) (vector host "" "unreachable" "" "")) rows)
+            (push (list (list host nil nil nil nil) (vector host "" "unreachable" "" "")) rows)
           (dolist (a (alist-get 'agents m))
             (let ((name (or (alist-get 'name a) ""))
                   (kind (or (alist-get 'kind a) "")))
-              (push (list (list host name kind)
+              (push (list (list host name kind (alist-get 'sessionId a) (alist-get 'cwd a))
                           (vector host name (format "%s" (or (alist-get 'status a) ""))
                                   kind
                                   (replace-regexp-in-string
@@ -53,11 +55,11 @@
 (defun sessions-open ()
   "Open the background session on this line in a vterm buffer."
   (interactive)
-  (pcase-let ((`(,host ,name ,kind) (tabulated-list-get-id)))
+  (pcase-let ((`(,host ,name ,kind . ,_) (tabulated-list-get-id)))
     (cond
      ((not name) (user-error "%s can't be reached" host))
      ((not (equal kind "background"))
-      (user-error "%s was started in a terminal; only background sessions (claude --bg) open here" name))
+      (user-error "%s was started in a terminal: quit it there, then press b to move it to the background" name))
      (t
       (require 'vterm)
       (let ((buf (format "*session: %s/%s*" host name)))
@@ -82,9 +84,34 @@
     (message "%s" out)
     (when (derived-mode-p 'sessions-mode) (revert-buffer))))
 
+(defun sessions-background ()
+  "Continue the terminal session on this line in the background, once quit.
+Claude Code can resume a session in the background under the same ID only
+after it has stopped in its terminal (otherwise it starts a copy)."
+  (interactive)
+  (pcase-let ((`(,host ,name ,kind ,id ,cwd) (tabulated-list-get-id)))
+    (cond
+     ((not name) (user-error "%s can't be reached" host))
+     ((equal kind "background") (user-error "%s already runs in the background: RET opens it" name))
+     ((not (y-or-n-p (format "Have you quit %s in its terminal (/exit)? " name)))
+      (message "Quit it there first, then press b again"))
+     ((seq-some (lambda (e) (equal (nth 3 (car e)) id)) (sessions--entries))
+      (user-error "%s is still running on %s: quit it in its terminal first" name host))
+     (t
+      (let ((out (with-temp-buffer
+                   (call-process "sh" nil t nil "-c"
+                                 (sessions--command
+                                  host (format "cd %s && claude --bg --resume %s"
+                                               (shell-quote-argument cwd)
+                                               (shell-quote-argument id))))
+                   (string-trim (buffer-string)))))
+        (message "%s" out)
+        (revert-buffer))))))
+
 (defvar-keymap sessions-mode-map
   :parent tabulated-list-mode-map
   "RET" #'sessions-open
+  "b" #'sessions-background
   "c" #'sessions-start)
 
 (define-derived-mode sessions-mode tabulated-list-mode "Sessions"
