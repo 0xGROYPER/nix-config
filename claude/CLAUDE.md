@@ -13,8 +13,9 @@ another machine (`hostname`), tell the user before doing more than reading.
   site's inventory allows builds. Never build or deploy between 09:25 and
   16:20 New York time on a trading day unless the user asks; the M4 also
   runs the live services.
-- **Market data** comes through the store's API (`tt store …`, or its HTTP
-  endpoints), never by reading the data drives directly.
+- **Market data:** history (the archive on the data drives) comes through
+  the store's API (`tt store …`, or its HTTP endpoints), never by reading
+  the drives directly; live data comes from the relays' streams.
 - **Long-running work** on another Mac goes in a Nomad job or a `tmux`
   session there, to be checked on later, not in a foreground ssh.
 - **Other sessions:** `sessions` lists every Mac's; `sessions send HOST
