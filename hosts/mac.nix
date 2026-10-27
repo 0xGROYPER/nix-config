@@ -1,39 +1,52 @@
 { config, pkgs, ... }:
 let
-  # The Macs whose Emacs daemons `hop` reaches, by their ssh names (ssh/config,
-  # over Tailscale).
+  # The Macs `sessions` asks, by their ssh names (ssh/config, over Tailscale).
   hosts = [
     "m4"
     "m2"
   ];
-  hop = pkgs.writeShellScriptBin "hop" ''
-    # hop HOST   this terminal becomes a frame of HOST's Emacs daemon: its
-    #            buffers, its Claude sessions (emacs/init.el, tt-claude),
-    #            started if it isn't running
-    # hop        each host's Claude sessions
-    set -eu
-    if [ $# -eq 0 ]; then
-      for h in ${toString hosts}; do
-        echo "$h:"
-        if out="$(ssh -o ConnectTimeout=5 "$h" "zsh -lc 'emacsclient --eval \"(tt-claude-list)\"'" 2>/dev/null)"; then
-          printf '%s\n' "$out" | sed -e 's/^"//' -e 's/"$//' | tr '|' '\n' | sed -e '/^$/d' -e 's/^/  /'
-        else
-          echo "  (unreachable, or no Emacs daemon)"
-        fi
-      done
-      exit 0
-    fi
-    exec ssh -t "$1" "zsh -lc 'exec emacsclient -t -a \"\"'"
+  # What runs on this Mac, as one JSON object: Claude Code's sessions (claude
+  # agents), the Claude buffers in its Emacs (tt-claude), and its ai-proxy
+  # (CLIProxyAPI): whether it answers, and its sign-ins by provider (from the
+  # auth files' names, never their contents).
+  sessions-here = pkgs.writeShellScriptBin "sessions-here" ''
+    set -u
+    agents="$(claude agents --json 2>/dev/null)" || agents='[]'
+    buffers="$(emacsclient --eval '(tt-claude-list)' 2>/dev/null | sed -e 's/^"//' -e 's/"$//')" || buffers=""
+    code="$(curl -s -o /dev/null -m 2 -w '%{http_code}' http://127.0.0.1:8317/ 2>/dev/null)" || code=000
+    proxy=down; [ "$code" = 000 ] || proxy=up
+    providers="$(ls "$HOME/.local/state/ai-proxy/auth" 2>/dev/null | sed 's/-.*//' | sort | uniq -c | awk '{ print $2 " " $1 }' | paste -sd, -)" || providers=""
+    ${pkgs.jq}/bin/jq -n --argjson agents "$agents" --arg buffers "$buffers" --arg proxy "$proxy" --arg providers "$providers" \
+      '{ agents: $agents, buffers: ($buffers | split("|") | map(select(. != ""))), proxy: $proxy, providers: $providers }'
+  '';
+  # Every Mac's sessions: Claude Code sessions (`claude attach NAME` there, or
+  # `ssh HOST` then `ec` for its Emacs), Emacs's Claude buffers, and ai-proxy.
+  sessions = pkgs.writeShellScriptBin "sessions" ''
+    set -u
+    for h in ${toString hosts}; do
+      if ! out="$(ssh -o ConnectTimeout=5 -o BatchMode=yes "$h" "zsh -lc sessions-here" 2>/dev/null)"; then
+        echo "$h: unreachable, or sessions-here isn't installed there yet"
+        continue
+      fi
+      printf '%s\n' "$out" | ${pkgs.jq}/bin/jq -r --arg h "$h" '
+        "\($h):",
+        (.agents[] | "  claude  \(.name)  \(.status)  \(.kind)  \(.cwd | sub("^/Users/[^/]+"; "~"))"),
+        (.buffers[] | "  emacs   \(.)"),
+        "  ai-proxy \(.proxy)\(if .providers != "" then " (\(.providers))" else "" end)"'
+    done
   '';
 in
 {
   # MacOS-specific user packages/settings go here.
 
-  home.packages = [ hop ];
+  home.packages = [
+    sessions
+    sessions-here
+  ];
 
   # Emacs as a daemon from login, kept running: Claude sessions live in its
   # vterm buffers (emacs/init.el, tt-claude), so they outlast any terminal or
-  # connection, and `hop HOST` reaches them from anywhere. Started by a login
+  # connection: `ssh HOST`, then `ec`, from anywhere. Started by a login
   # zsh, so it has a terminal's PATH (claude, the nix tools). A GUI frame is
   # `emacsclient -c`.
   launchd.agents.emacs = {
@@ -65,6 +78,8 @@ in
 
   programs.zsh = {
     enable = true;
+    # This Mac's Emacs (its daemon) in this terminal; started if it isn't running.
+    shellAliases.ec = "emacsclient -t -a ''";
     history = {
       size = 100000;
       save = 100000;
