@@ -6,7 +6,7 @@ another machine (`hostname`), tell the user before doing more than reading.
 
 - **Another Mac:** run commands there with `ssh m2 '…'`, one command at a
   time, so each step says which machine it touches. Edit code in the M4's
-  M4's own checkouts (`~/repos/…`), never in another Mac's over ssh.
+  own checkouts (`~/repos/…`), never in another Mac's over ssh.
 - **Builds and tests** that are more than a quick check go to Nomad, not this
   shell: tinytrader-deploy's `scripts/job run tinytrader-build package=NAME`
   (or `tinytrader-test`), then `scripts/job logs RUN`. They run where the
