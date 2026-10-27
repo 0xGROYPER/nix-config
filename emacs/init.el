@@ -17,8 +17,35 @@
 
 (require 'server)
 
-(unless (server-running-p)
+;; The daemon (hosts/mac.nix) starts its own server; a GUI Emacs started
+;; beside it leaves the server to it.
+(unless (or (daemonp) (server-running-p))
   (server-start))
+
+;; Claude Code sessions as vterm buffers named *claude: DIR*. They live in
+;; this Emacs, a daemon on each Mac, so `hop HOST' reaches them from anywhere.
+(use-package vterm
+  :commands vterm)
+
+(defun tt-claude (dir)
+  "Start Claude Code in DIR in a vterm buffer, or switch to the one there."
+  (interactive
+   (list (read-directory-name "Claude in: " (or (vc-root-dir) default-directory))))
+  (let* ((dir (file-name-as-directory (expand-file-name dir)))
+         (name (format "*claude: %s*" (abbreviate-file-name (directory-file-name dir))))
+         (buf (get-buffer name)))
+    (if (buffer-live-p buf)
+        (pop-to-buffer-same-window buf)
+      (let ((default-directory dir)
+            (vterm-shell (or (executable-find "claude") "claude")))
+        (vterm name)))))
+
+(defun tt-claude-list ()
+  "This Emacs's Claude buffers, separated by | (`hop' with no host)."
+  (mapconcat #'buffer-name
+             (seq-filter (lambda (b) (string-prefix-p "*claude: " (buffer-name b)))
+                         (buffer-list))
+             "|"))
 
 (use-package markdown-mode
   :mode "\\.md\\'")
