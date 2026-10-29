@@ -73,11 +73,13 @@ in
   # restart the daemon and close every emacsclient frame. The running daemon
   # keeps its build until it's restarted (a crash, a login, or by hand:
   # `launchctl kickstart -k gui/$(id -u)/org.nix-community.home.emacs`).
+  # Restart it before collecting garbage once its generation has expired:
+  # it loads Lisp lazily from its own store path.
   home.file.".local/share/emacs-daemon".source = emacs-daemon;
 
   home.activation.emacsDaemonNotice = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-    old=$(readlink -f "''${oldGenPath:-/nonexistent}/home-files/.local/share/emacs-daemon" 2>/dev/null || true)
-    if [[ -n "$old" && "$old" != "${emacs-daemon}" ]]; then
+    link="''${oldGenPath:-/nonexistent}/home-files/.local/share/emacs-daemon"
+    if [[ -e "$link" && "$(readlink -f "$link")" != "${emacs-daemon}" ]]; then
       echo "The Emacs daemon's build changed; the running daemon keeps the old one until restarted:"
       echo "  launchctl kickstart -k gui/$(id -u)/org.nix-community.home.emacs"
     fi
