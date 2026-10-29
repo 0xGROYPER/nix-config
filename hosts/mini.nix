@@ -41,4 +41,27 @@ in
       StandardErrorPath = "${home}/Library/Logs/jupyterlab.log";
     };
   };
+
+  # The monthly input update: on the 1st at 15:00 here (Pacific; 18:00 in
+  # New York, after the close), scripts/flake-update-pr updates nixpkgs,
+  # Home Manager, nix-darwin and sops-nix, builds every Mac's configuration,
+  # and opens a PR. It never merges.
+  launchd.agents.flake-update-pr = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "/bin/bash"
+        "${home}/repos/nix-config/scripts/flake-update-pr"
+      ];
+      StartCalendarInterval = [
+        {
+          Day = 1;
+          Hour = 15;
+          Minute = 0;
+        }
+      ];
+      StandardOutPath = "${home}/Library/Logs/flake-update-pr.log";
+      StandardErrorPath = "${home}/Library/Logs/flake-update-pr.log";
+    };
+  };
 }
