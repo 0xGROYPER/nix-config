@@ -59,6 +59,33 @@
 (use-package rust-mode
   :mode "\\.rs\\'")
 
+;; TRAMP: a GUI Emacs here editing another Mac's files, e.g.
+;; C-x C-f /ssh:m4:~/repos/tinytrader-ops/research/foo.py
+;; ssh/config's ControlMaster already shares one connection per Mac, so
+;; TRAMP uses it rather than opening its own. Remote commands get that Mac's
+;; login PATH (Nix's git, uv), backups, auto-saves and lock files stay out
+;; of the remote folders, and version control isn't asked about remote
+;; files (a round trip per file shown; magit still works there).
+(with-eval-after-load 'tramp
+  (setq tramp-default-method "ssh"
+        tramp-use-connection-share nil   ; ssh/config's ControlMaster
+        tramp-verbose 1
+        remote-file-name-inhibit-locks t
+        remote-file-name-inhibit-auto-save-visited t
+        tramp-auto-save-directory (locate-user-emacs-file "tramp-auto-save/"))
+  (add-to-list 'tramp-remote-path 'tramp-own-remote-path)
+  (add-to-list 'backup-directory-alist
+               (cons tramp-file-name-regexp
+                     (locate-user-emacs-file "tramp-backups/")))
+  (setq vc-ignore-dir-regexp
+        (format "\\(?:%s\\)\\|\\(?:%s\\)"
+                vc-ignore-dir-regexp tramp-file-name-regexp))
+  ;; Run remote processes (compile, magit's git) directly over ssh.
+  (connection-local-set-profile-variables
+   'remote-direct-async-process '((tramp-direct-async-process . t)))
+  (connection-local-set-profiles
+   '(:application tramp :protocol "ssh") 'remote-direct-async-process))
+
 ;; Org as a notebook (emacs-jupyter): `python' src blocks run in a Jupyter
 ;; kernel, one per :session, like a notebook's cells. The default kernel is
 ;; tinytrader-ops' venv, registered with
