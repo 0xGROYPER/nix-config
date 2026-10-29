@@ -14,8 +14,10 @@
         (setenv "PATH" (concat d ":" (getenv "PATH")))))))
 
 
-(tool-bar-mode -1)
-(scroll-bar-mode -1)
+;; The daemon is terminal-only (emacs-nox, hosts/mac.nix), without the tool
+;; bar or scroll bars.
+(when (fboundp 'tool-bar-mode) (tool-bar-mode -1))
+(when (fboundp 'scroll-bar-mode) (scroll-bar-mode -1))
 (menu-bar-mode -1)
 
 ;; Built-in dark theme (Modus, since Emacs 28): high contrast.
