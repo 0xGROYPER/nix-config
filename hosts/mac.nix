@@ -33,41 +33,15 @@ let
     text = builtins.readFile ../scripts/sessions/sessions-deliver.sh;
   };
   # The Emacs daemon is a terminal-only build (emacs-nox) with the same
-  # packages. The GUI (NS) build as a daemon with only `emacsclient -t`
-  # frames sometimes misses the wakeup from its fd-watching thread and
-  # sleeps in Cocoa's event loop: every client, new or open, freezes until a
-  # Cocoa event happens to arrive. emacs-nox waits with plain pselect. It can't open GUI frames, so the GUI is Emacs.app,
-  # an Emacs of its own (it leaves the server to the daemon, emacs/init.el).
+  # packages. The GUI (NS) build, as a daemon serving only `emacsclient -t`
+  # frames, froze every client from time to time at 0% CPU, parked in
+  # Cocoa's event loop until a Cocoa event woke it (a lost wakeup in the NS
+  # port, or App Nap; not pinned down). emacs-nox has no Cocoa event loop.
+  # The shared daemon is reached with `emacsclient -t` (from Ghostty, or
+  # over ssh); Emacs.app is a GUI Emacs of its own, which leaves the server
+  # to the daemon (emacs/init.el).
   emacs = config.programs.emacs.finalPackage;
   emacs-daemon = (pkgs.emacsPackagesFor pkgs.emacs-nox).emacsWithPackages config.programs.emacs.extraPackages;
-  # A Dock app opening the GUI Emacs (or bringing it forward).
-  emacs-client-launcher = pkgs.writeCBin "emacs-client" ''
-    #include <unistd.h>
-    int main(void) {
-      execl("/usr/bin/open", "open", "-a", "${emacs}/Applications/Emacs.app", (char *) 0);
-      return 127;
-    }
-  '';
-  emacs-client-app = pkgs.runCommand "emacs-client-app" { } ''
-    app="$out/Applications/Emacs Client.app/Contents"
-    mkdir -p "$app/MacOS" "$app/Resources"
-    cp ${emacs}/Applications/Emacs.app/Contents/Resources/Emacs.icns "$app/Resources/"
-    # A native launcher: macOS takes an app whose executable is a script for
-    # an Intel one and asks for Rosetta.
-    cp ${emacs-client-launcher}/bin/emacs-client "$app/MacOS/emacs-client"
-    cat > "$app/Info.plist" <<'PLIST'
-    <?xml version="1.0" encoding="UTF-8"?>
-    <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-    <plist version="1.0"><dict>
-      <key>CFBundleExecutable</key><string>emacs-client</string>
-      <key>CFBundleIconFile</key><string>Emacs</string>
-      <key>CFBundleIdentifier</key><string>org.nix-config.emacs-client</string>
-      <key>CFBundleName</key><string>Emacs Client</string>
-      <key>CFBundlePackageType</key><string>APPL</string>
-      <key>LSUIElement</key><true/>
-    </dict></plist>
-    PLIST
-  '';
 in
 {
   # MacOS-specific user packages/settings go here.
@@ -79,7 +53,6 @@ in
     sessions
     sessions-here
     sessions-deliver
-    emacs-client-app
   ];
 
   # Emacs as a daemon from login, kept running, so its buffers outlast any
