@@ -59,6 +59,34 @@
 (use-package rust-mode
   :mode "\\.rs\\'")
 
+;; Org as a notebook (emacs-jupyter): `python' src blocks run in a Jupyter
+;; kernel, one per :session, like a notebook's cells. The default kernel is
+;; tinytrader-ops' venv, registered with
+;;   ~/repos/tinytrader-ops/.venv/bin/python -m ipykernel install --user --name tinytrader-ops
+;; and a file can pick another with `#+PROPERTY: header-args:python :kernel NAME'.
+;; The daemon is terminal-only, so plots are written to files (`:file
+;; plot.png', or the [[file:...]] links a block returns) and opened outside
+;; Emacs (C-c C-o), not shown inline.
+(use-package jupyter
+  :after org
+  :config
+  (setq org-babel-default-header-args:jupyter-python
+        '((:kernel . "tinytrader-ops")
+          (:session . "py")
+          (:async . "yes")))
+  (org-babel-do-load-languages
+   'org-babel-load-languages
+   (append org-babel-load-languages '((python . t) (jupyter . t))))
+  (org-babel-jupyter-override-src-block "python")
+  (add-hook 'org-babel-after-execute-hook #'org-redisplay-inline-images)
+  ;; Org 9.8 needs a drawer's :pre-blank, which emacs-jupyter's results
+  ;; drawer (a block with several outputs, e.g. text and a plot) leaves nil:
+  ;; inserting it fails with (wrong-type-argument wholenump nil).
+  (define-advice jupyter-org-results-drawer (:filter-return (drawer) pre-blank)
+    (unless (org-element-property :pre-blank drawer)
+      (org-element-put-property drawer :pre-blank 0))
+    drawer))
+
 ;; (use-package gptel
 ;;   :config
 ;;   (require 'gptel-openai-oauth)

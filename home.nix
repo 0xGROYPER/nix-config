@@ -65,6 +65,23 @@ in
     pkgs.cmake
     pkgs.nodejs
     pkgs.python3 # a base interpreter; projects pin theirs with uv
+    # The `jupyter` commands, for Org's Jupyter blocks (emacs/init.el), from
+    # a Python of their own (ipykernel too: emacs-jupyter asks `jupyter
+    # kernel` for free ports); only jupyter* is linked, so it doesn't clash
+    # with python3 above. The kernels that run code come from each project's
+    # venv (`.venv/bin/python -m ipykernel install --user --name NAME`).
+    (
+      let
+        env = pkgs.python3.withPackages (ps: [
+          ps.jupyter-client
+          ps.ipykernel
+        ]);
+      in
+      pkgs.runCommand "jupyter-cli" { } ''
+        mkdir -p $out/bin
+        ln -s ${env}/bin/jupyter* $out/bin/
+      ''
+    )
 
     # python: uv (Astral), for tinytrader-ops' pyproject.toml/uv.lock
     pkgs.uv
@@ -183,6 +200,7 @@ in
       epkgs.tree-sitter-langs
       epkgs.markdown-mode
       epkgs.vterm # a terminal in Emacs
+      epkgs.jupyter # Org src blocks run in Jupyter kernels (emacs/init.el)
       # epkgs.treesit-grammars.with-rust-grammar
     ] ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
       epkgs.exwm
