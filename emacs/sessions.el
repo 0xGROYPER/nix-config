@@ -19,19 +19,43 @@
   (json-parse-buffer :object-type 'alist :array-type 'list
                      :null-object nil :false-object nil))
 
-(defun sessions--read ()
-  "Every Mac's entry from `sessions --json', waiting for it."
-  (with-temp-buffer
-    (unless (zerop (call-process "sessions" nil t nil "--json"))
-      (error "sessions --json failed: %s" (string-trim (buffer-string))))
-    (sessions--parse)))
+;; Nothing here waits on another Mac: the daemon serves every emacsclient, so
+;; a synchronous call to one that's asleep (ssh waits on it) would freeze
+;; them all. Each runs as a process, and its sentinel carries on.
 
-(defun sessions--entries (&optional macs)
+(defun sessions--run (command done)
+  "Run the shell COMMAND in the background; then call DONE.
+DONE gets the exit status and the output, trimmed."
+  (let ((out (generate-new-buffer " *sessions-run*")))
+    (make-process
+     :name "sessions" :buffer out :noquery t :connection-type 'pipe
+     :command (list "sh" "-c" command)
+     :sentinel
+     (lambda (proc _event)
+       (unless (process-live-p proc)
+         (let ((status (process-exit-status proc))
+               (text (with-current-buffer out (string-trim (buffer-string)))))
+           (kill-buffer out)
+           (funcall done status text)))))))
+
+(defun sessions--fetch (done)
+  "Ask every Mac in the background, with `sessions --json'; then call DONE.
+DONE gets the list of Macs, or nil if `sessions --json' failed."
+  (sessions--run "exec sessions --json 2>/dev/null"
+                 (lambda (status text)
+                   (if (zerop status)
+                       (funcall done (with-temp-buffer
+                                       (insert text)
+                                       (sessions--parse)))
+                     (message "sessions --json failed (exit %d)" status)
+                     (funcall done nil)))))
+
+(defun sessions--entries (macs)
   "Rows for `tabulated-list-entries', one per session (or unreachable Mac).
-MACS is the list from `sessions --json'; without it, ask and wait."
+MACS is the list from `sessions --json'."
   (let (rows)
     (setq sessions--here nil)
-    (dolist (m (or macs (sessions--read)))
+    (dolist (m macs)
       (let ((host (alist-get 'host m)))
         (when (alist-get 'here m) (push host sessions--here))
         (if (not (alist-get 'reachable m))
@@ -47,38 +71,29 @@ MACS is the list from `sessions --json'; without it, ask and wait."
                     rows))))))
     (nreverse rows)))
 
-(defvar-local sessions--process nil
-  "The `sessions --json' run refreshing this buffer, while it runs.")
+(defvar-local sessions--refreshing 0
+  "Counts this buffer's refreshes; only the latest one's answer is shown.")
 
 (defun sessions--refresh ()
-  "Refresh the list in the background, so Emacs isn't held up meanwhile.
-Asking every Mac takes up to several seconds (ssh waits on one that's
-asleep), and the daemon serves every emacsclient: a synchronous call would
-freeze them all."
-  (let ((buf (current-buffer))
-        (out (generate-new-buffer " *sessions-json*")))
-    (when (process-live-p sessions--process) (delete-process sessions--process))
+  "Refresh the list in the background, so Emacs isn't held up meanwhile."
+  (let* ((buf (current-buffer))
+         (n (setq sessions--refreshing (1+ sessions--refreshing))))
     (setq mode-line-process ":refreshing")
-    (setq sessions--process
-          (make-process
-           :name "sessions" :buffer out :noquery t :connection-type 'pipe
-           :command '("sh" "-c" "exec sessions --json 2>/dev/null")
-           :sentinel
-           (lambda (proc _event)
-             (unless (process-live-p proc)
-               (unwind-protect
-                   (when (and (buffer-live-p buf)
-                              (eq proc (buffer-local-value 'sessions--process buf)))
-                     (with-current-buffer buf
-                       (setq sessions--process nil mode-line-process nil)
-                       (if (zerop (process-exit-status proc))
-                           (progn
-                             (setq tabulated-list-entries
-                                   (sessions--entries (with-current-buffer out (sessions--parse))))
-                             (tabulated-list-print t))
-                         (message "sessions --json failed (exit %d)" (process-exit-status proc)))
-                       (force-mode-line-update)))
-                 (kill-buffer out))))))))
+    (sessions--fetch
+     (lambda (macs)
+       (when (buffer-live-p buf)
+         (with-current-buffer buf
+           (when (= n sessions--refreshing)
+             (setq mode-line-process nil)
+             (when macs
+               (setq tabulated-list-entries (sessions--entries macs))
+               (tabulated-list-print t))
+             (force-mode-line-update))))))))
+
+(defun sessions--refresh-list ()
+  "Refresh the *sessions* buffer, if it's open."
+  (let ((buf (get-buffer "*sessions*")))
+    (when buf (with-current-buffer buf (sessions--refresh)))))
 
 (defun sessions--command (host cmd)
   "CMD as a shell command run on HOST: here, or over ssh with a terminal."
@@ -112,12 +127,12 @@ freeze them all."
                           nil t)
          (read-string "Folder on that Mac: " "~/repos/")
          (read-string "First prompt: ")))
-  (let* ((cmd (format "cd %s && claude --bg %s" dir (shell-quote-argument prompt)))
-         (out (with-temp-buffer
-                (call-process "sh" nil t nil "-c" (sessions--command host cmd))
-                (string-trim (buffer-string)))))
-    (message "%s" out)
-    (when (derived-mode-p 'sessions-mode) (revert-buffer))))
+  (message "Starting a session on %s..." host)
+  (sessions--run (sessions--command
+                  host (format "cd %s && claude --bg %s" dir (shell-quote-argument prompt)))
+                 (lambda (_status text)
+                   (message "%s: %s" host text)
+                   (sessions--refresh-list))))
 
 (defun sessions-background ()
   "Continue the terminal session on this line in the background, once quit.
@@ -130,18 +145,22 @@ after it has stopped in its terminal (otherwise it starts a copy)."
      ((equal kind "background") (user-error "%s already runs in the background: RET opens it" name))
      ((not (y-or-n-p (format "Have you quit %s in its terminal (/exit)? " name)))
       (message "Quit it there first, then press b again"))
-     ((seq-some (lambda (e) (equal (nth 3 (car e)) id)) (sessions--entries))
-      (user-error "%s is still running on %s: quit it in its terminal first" name host))
      (t
-      (let ((out (with-temp-buffer
-                   (call-process "sh" nil t nil "-c"
-                                 (sessions--command
-                                  host (format "cd %s && claude --bg --resume %s"
-                                               (shell-quote-argument cwd)
-                                               (shell-quote-argument id))))
-                   (string-trim (buffer-string)))))
-        (message "%s" out)
-        (revert-buffer))))))
+      (message "Checking %s has stopped on %s..." name host)
+      (sessions--fetch
+       (lambda (macs)
+         (cond
+          ((null macs))
+          ((seq-some (lambda (e) (equal (nth 3 (car e)) id)) (sessions--entries macs))
+           (message "%s is still running on %s: quit it in its terminal first" name host))
+          (t
+           (sessions--run (sessions--command
+                           host (format "cd %s && claude --bg --resume %s"
+                                        (shell-quote-argument cwd)
+                                        (shell-quote-argument id)))
+                          (lambda (_status text)
+                            (message "%s: %s" host text)
+                            (sessions--refresh-list)))))))))))
 
 (defvar sessions-mode-map (make-sparse-keymap)
   "Keys of `sessions-mode'; set each load, so reloading updates them.")
