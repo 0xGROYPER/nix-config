@@ -88,7 +88,12 @@
           system = "aarch64-darwin";
           username = "dawsonshay";
           homeDirectory = "/Users/dawsonshay";
-          hostModule = ./hosts/mac.nix;
+          hostModule = {
+            imports = [
+              ./hosts/mac.nix
+              ./hosts/mini.nix
+            ];
+          };
         };
       };
 

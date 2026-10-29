@@ -21,7 +21,8 @@ setup on every machine, nix-darwin for the Macs' machine level, and NixOS
 ├── home.nix           user config shared by every machine
 ├── hosts/
 │   ├── x200s.nix      user config for the X200s, including launching EXWM
-│   └── mac.nix        macOS user settings (Home Manager owns zsh)
+│   ├── mac.nix        macOS user settings (Home Manager owns zsh)
+│   └── mini.nix       the M4's own: JupyterLab for research, on the tailnet
 ├── system/
 │   └── common.nix     what every machine's machine config shares, Mac or Linux
 ├── darwin/
