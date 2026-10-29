@@ -9,7 +9,7 @@ setup on every machine, nix-darwin for the Macs' machine level, and NixOS
 | ThinkPad X200s | `homeConfigurations."daws@x200s"` | `/etc/nixos/configuration.nix` |
 | Mac mini M4 (`mini`) | `homeConfigurations."dawsonshay@mini"` | `darwinConfigurations.mini` (`darwin/mini.nix`) plus tinytrader-ops' role |
 | Mac mini M2 (`m2`) | `homeConfigurations."daws@mac"` | `darwinConfigurations.m2` (`darwin/m2.nix`) plus tinytrader-ops' role |
-| Other Macs | `homeConfigurations."daws@mac"` | none yet |
+| MacBook Air (`laptop`) | `homeConfigurations."daws@mac"` | `darwinConfigurations.laptop` (`darwin/laptop.nix`) |
 
 Day-to-day use (Emacs, Claude Code sessions, notebooks, switching each
 Mac): [docs/guide.md](docs/guide.md).
@@ -32,6 +32,8 @@ Mac): [docs/guide.md](docs/guide.md).
 │   ├── common.nix     what every Mac's machine config shares (nix-darwin)
 │   ├── mini.nix       the Mac mini M4's machine config
 │   ├── m2.nix         the Mac mini M2's machine config
+│   ├── server.nix     what the always-on Macs add (Colima, never sleeping)
+│   ├── laptop.nix     the MacBook Air's machine config
 │   └── ai-proxy.nix   the local AI endpoint, a daemon on mini
 ├── nixos/
 │   ├── common.nix     what every Linux machine's machine config shares (NixOS)
@@ -71,7 +73,9 @@ Responsibilities:
 * `home.nix`: user configuration shared across machines: CLI tools, Git/GitHub, Emacs and Emacs packages, SSH config, and `cargo` wrapped to build into one folder per repository (`~/.cache/cargo-target/<repo>/target`), shared by its worktrees, so they don't each leave a `target/` behind (tinytrader-deploy's decision 0016).
 * `hosts/x200s.nix`, `hosts/mac.nix`: per-platform user settings.
 * `system/common.nix`: the machine configuration every machine shares, Mac or Linux: system tools, Tailscale, SSH (keys only), sops-nix's key, the timezone.
-* `darwin/common.nix`: the rest of what every Mac here shares (nix-darwin), the counterpart of `nixos/common.nix`: Tailscale's resolver file, power (never sleeps, restarts after a power cut), nix-darwin's tools on PATH, the container tools, and Colima, which runs the Docker engine as a boot daemon (`org.nixos.colima`), so containers come back after a reboot without anyone logging in (each Mac sizes its VM with `local.colima`).
+* `darwin/common.nix`: the rest of what every Mac here shares (nix-darwin), the counterpart of `nixos/common.nix`: Determinate Nix, the shells left to Home Manager, Tailscale's resolver file, nix-darwin's tools on PATH.
+* `darwin/server.nix`: what the always-on Macs (the M4, the M2) add: power (never sleeps, restarts after a power cut), the container tools, and Colima, which runs the Docker engine as a boot daemon (`org.nixos.colima`), so containers come back after a reboot without anyone logging in (each Mac sizes its VM with `local.colima`).
+* `darwin/laptop.nix`: the MacBook Air's: a client, with the Tailscale app rather than nix-darwin's, Touch ID for sudo, and the M4's builds accepted (`extra-trusted-users`).
 * `nixos/common.nix`: the rest of what every Linux machine shares (NixOS): Nix with flakes, Docker natively, never sleeping. Only `nixosConfigurations.example` uses it so far; the X200s is still on `/etc/nixos/configuration.nix`.
 * `darwin/mini.nix`: the Mac mini M4's: its name, user, SSH keys, Colima's size, and the local AI endpoint (`darwin/ai-proxy.nix`, below), whose secrets sops-nix decrypts.
 * `darwin/m2.nix`: the Mac mini M2's (the NAS and job runner, account `daws`): its name, user, SSH keys and Colima's size. Its user config is `daws@mac`.

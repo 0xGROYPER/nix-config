@@ -135,6 +135,15 @@
             tinytrader-ops.darwinModules.mac-mini-m2
           ];
         };
+
+        # The MacBook Air: a client, with no part in tinytrader.
+        laptop = nix-darwin.lib.darwinSystem {
+          specialArgs = { inherit nix-secrets; };
+          modules = [
+            sops-nix.darwinModules.sops
+            ./darwin/laptop.nix
+          ];
+        };
       };
 
       # Machine-level configuration for Linux (NixOS), sharing system/common.nix
