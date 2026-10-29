@@ -67,11 +67,27 @@ in
     ${emacs}/bin/emacsclient --eval '(load (expand-file-name "sessions" user-emacs-directory) nil t)' >/dev/null 2>&1 || true
   '';
 
+  # The daemon runs Emacs from a fixed path, ~/.local/share/emacs-daemon (a
+  # link to this generation's emacs-daemon), not from its store path, so the
+  # agent's plist doesn't change when the packages do and a switch doesn't
+  # restart the daemon and close every emacsclient frame. The running daemon
+  # keeps its build until it's restarted (a crash, a login, or by hand:
+  # `launchctl kickstart -k gui/$(id -u)/org.nix-community.home.emacs`).
+  home.file.".local/share/emacs-daemon".source = emacs-daemon;
+
+  home.activation.emacsDaemonNotice = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+    old=$(readlink -f "''${oldGenPath:-/nonexistent}/home-files/.local/share/emacs-daemon" 2>/dev/null || true)
+    if [[ -n "$old" && "$old" != "${emacs-daemon}" ]]; then
+      echo "The Emacs daemon's build changed; the running daemon keeps the old one until restarted:"
+      echo "  launchctl kickstart -k gui/$(id -u)/org.nix-community.home.emacs"
+    fi
+  '';
+
   launchd.agents.emacs = {
     enable = true;
     config = {
       ProgramArguments = [
-        "${emacs-daemon}/bin/emacs"
+        "${config.home.homeDirectory}/.local/share/emacs-daemon/bin/emacs"
         "--fg-daemon"
       ];
       EnvironmentVariables.PATH = builtins.concatStringsSep ":" [
