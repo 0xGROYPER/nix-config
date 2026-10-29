@@ -11,6 +11,9 @@ setup on every machine, nix-darwin for the Macs' machine level, and NixOS
 | Mac mini M2 (`m2`) | `homeConfigurations."daws@mac"` | `darwinConfigurations.m2` (`darwin/m2.nix`) plus tinytrader-ops' role |
 | Other Macs | `homeConfigurations."daws@mac"` | none yet |
 
+Day-to-day use (Emacs, Claude Code sessions, notebooks, switching each
+Mac): [docs/guide.md](docs/guide.md).
+
 ## Layout
 
 ```text
@@ -43,6 +46,7 @@ setup on every machine, nix-darwin for the Macs' machine level, and NixOS
 │   ├── ai-key         set its keys (in nix-secrets)
 │   └── ai-client-key  print the key its clients send
 ├── ssh/config         ~/.ssh/config
+├── docs/guide.md      day-to-day use
 └── emacs/
     ├── init.el
     └── early-init.el
