@@ -14,9 +14,11 @@
 { ... }:
 {
   imports = [
-    # Tailscale, SSH by key only, never sleep, tools on PATH, Colima,
-    # sops-nix's key: as on the mini (darwin/common.nix and system/common.nix).
+    # As on the mini: Tailscale, SSH by key only, tools on PATH, sops-nix's
+    # key (darwin/common.nix and system/common.nix); Colima and never
+    # sleeping (darwin/server.nix).
     ./common.nix
+    ./server.nix
   ];
 
   system.primaryUser = "daws";
