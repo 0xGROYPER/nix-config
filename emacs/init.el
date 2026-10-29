@@ -20,6 +20,12 @@
 (when (fboundp 'scroll-bar-mode) (scroll-bar-mode -1))
 (menu-bar-mode -1)
 
+;; The mouse in terminal frames (emacsclient -t, from Ghostty or over ssh):
+;; the touchpad scrolls the window under it and clicks move point. Without
+;; it, Ghostty turns scrolling into arrow keys, as for any full-screen
+;; program that doesn't ask for the mouse.
+(xterm-mouse-mode 1)
+
 ;; Built-in dark theme (Modus, since Emacs 28): high contrast.
 (load-theme 'modus-vivendi t)
 
