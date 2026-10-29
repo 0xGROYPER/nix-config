@@ -104,9 +104,9 @@ in
 
   # Ghostty, the terminal: GPU-rendered, true colour, mouse and the kitty
   # graphics protocol, so `ssh m4` then `emacsclient -t` is close to the GUI.
-  # Option is Meta for Emacs; over ssh it installs its terminfo on the other
-  # host the first time (or falls back to xterm-256color), so Emacs there
-  # gets its colours and keys right.
+  # Option is Meta for Emacs. Over ssh it installs its terminfo on another
+  # host that lacks it (or falls back to xterm-256color); on these Macs the
+  # activation below has already put it where macOS's zsh looks.
   programs.ghostty = {
     enable = true;
     package = pkgs.ghostty-bin;
@@ -117,6 +117,23 @@ in
       window-save-state = "always";
     };
   };
+
+  # Ghostty's terminfo, compiled by macOS's own tic into ~/.terminfo. The
+  # copy in the Nix profile is in ncurses 6's format, which the login shell
+  # (/bin/zsh, on macOS's older ncurses) can't read: logged in from Ghostty,
+  # it had no terminal definition and couldn't move the cursor, so Delete and
+  # C-a looked broken. Ghostty's ssh-terminfo didn't step in, as Nix's
+  # infocmp finds the entry. ~/.terminfo is searched before TERMINFO_DIRS.
+  home.activation.ghosttyTerminfo =
+    let
+      source = pkgs.runCommand "xterm-ghostty.terminfo" { nativeBuildInputs = [ pkgs.ncurses ]; } ''
+        TERMINFO_DIRS=${config.programs.ghostty.package.terminfo}/share/terminfo \
+          infocmp -x xterm-ghostty > "$out"
+      '';
+    in
+    lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      run /usr/bin/tic -x -o "$HOME/.terminfo" ${source} 2>/dev/null
+    '';
 
   programs.zsh = {
     enable = true;
