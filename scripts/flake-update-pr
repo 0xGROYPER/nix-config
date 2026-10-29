@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# Open a PR updating the public flake inputs (nixpkgs, Home Manager,
+# nix-darwin, sops-nix), with every Mac's configuration built against them.
+# Run monthly on the M4 (hosts/mini.nix), after the close; it never merges.
+# The private inputs (tinytrader-ops, nix-secrets) move with their own PRs.
+set -euo pipefail
+repo="$HOME/repos/nix-config"
+nixbin=/nix/var/nix/profiles/default/bin
+export PATH="$nixbin:$HOME/.nix-profile/bin:/run/current-system/sw/bin:/usr/bin:/bin"
+branch="flake-update-$(date +%Y-%m)"
+work="$HOME/repos/.worktrees/nix-config-$branch"
+
+# Not during the trading day (the M4 runs the live services).
+hm=$(TZ=America/New_York date +%H%M)
+dow=$(TZ=America/New_York date +%u)
+if [ "$dow" -le 5 ] && [ "$hm" -ge 0925 ] && [ "$hm" -lt 1620 ]; then
+  echo "market hours; not now" >&2
+  exit 0
+fi
+
+cd "$repo"
+git fetch -q origin
+if git ls-remote -q --exit-code origin "refs/heads/$branch" >/dev/null; then
+  echo "$branch exists already" >&2
+  exit 0
+fi
+git worktree add -q -b "$branch" "$work" origin/master
+trap 'git -C "$repo" worktree remove --force "$work"; git -C "$repo" branch -q -D "$branch" 2>/dev/null || true' EXIT
+cd "$work"
+
+changes=$(nix flake update nixpkgs home-manager nix-darwin sops-nix 2>&1 | grep -E "Updated input|^ *'|→" || true)
+if git diff --quiet flake.lock; then
+  echo "nothing to update"
+  exit 0
+fi
+
+if nix build --no-link --keep-going \
+  '.#darwinConfigurations.mini.system' '.#darwinConfigurations.m2.system' \
+  '.#darwinConfigurations.laptop.system' \
+  '.#homeConfigurations."dawsonshay@mini".activationPackage' \
+  '.#homeConfigurations."daws@mac".activationPackage' 2>build.log; then
+  built="Every configuration builds: darwinConfigurations.mini, .m2 and .laptop; homeConfigurations.\"dawsonshay@mini\" and .\"daws@mac\"."
+else
+  built="**The build failed.** The end of its log:
+
+\`\`\`
+$(tail -40 build.log)
+\`\`\`"
+fi
+rm -f build.log
+
+git commit -q -m "Update nixpkgs, Home Manager, nix-darwin and sops-nix ($(date +%Y-%m))" flake.lock
+git push -q -u origin "$branch"
+gh pr create --base master --head "$branch" \
+  --title "Update nixpkgs, Home Manager, nix-darwin and sops-nix ($(date +%Y-%m))" \
+  --body "The monthly update (scripts/flake-update-pr, on the M4).
+
+\`\`\`
+$changes
+\`\`\`
+
+$built
+
+After merging: \`scripts/switch\` on each Mac, and \`scripts/switch-home\` for each Mac."
