@@ -48,4 +48,15 @@
   # modules/backup-darwin.nix): its backup key may run only rrsync,
   # write-only, from the tailnet, into ~/Backups/tinytrader-from-mini.
   tinytrader-ops.backup.receive = true;
+
+  # The M4 builds this Mac's Home Manager generations and copies them here
+  # (nix-config's scripts/switch-home), so daws may add store paths without
+  # signatures. A trusted Nix user is root-equivalent; daws is an admin
+  # already. Determinate Nix includes this file from /etc/nix/nix.conf; the
+  # hash is the installer's version, which this replaces. The daemon reads it
+  # when it starts: sudo launchctl kickstart -k system/systems.determinate.nix-daemon
+  environment.etc."nix/nix.custom.conf" = {
+    text = "extra-trusted-users = daws\n";
+    knownSha256Hashes = [ "3bd68ef979a42070a44f8d82c205cfd8e8cca425d91253ec2c10a88179bb34aa" ];
+  };
 }
