@@ -125,9 +125,21 @@ in
   # Option is Meta for Emacs. Over ssh it installs its terminfo on another
   # host that lacks it (or falls back to xterm-256color); on these Macs the
   # activation below has already put it where macOS's zsh looks.
+  #
+  # Home Manager writes the config but doesn't install the app (package =
+  # null): Ghostty.app is the developer's notarized build, in /Applications,
+  # updating itself. Home Manager copies the apps it installs into
+  # ~/Applications/Home Manager Apps (for Spotlight), and macOS's App
+  # Management protection lets only programs holding that permission modify a
+  # developer-signed app. Over ssh, or from a Claude Code session, nothing
+  # holds it (short of Full Disk Access for all remote logins), so a
+  # Home Manager-installed Ghostty made every `home-manager switch` there
+  # abort. The apps it still installs (Emacs.app, Zed.app) are built by Nix,
+  # unsigned, and unprotected. Install any other developer-signed app
+  # (a `-bin` package, say) the same way, outside Home Manager.
   programs.ghostty = {
     enable = true;
-    package = pkgs.ghostty-bin;
+    package = null;
     settings = {
       macos-option-as-alt = true;
       shell-integration-features = "ssh-env,ssh-terminfo";
@@ -145,7 +157,7 @@ in
   home.activation.ghosttyTerminfo =
     let
       source = pkgs.runCommand "xterm-ghostty.terminfo" { nativeBuildInputs = [ pkgs.ncurses ]; } ''
-        TERMINFO_DIRS=${config.programs.ghostty.package.terminfo}/share/terminfo \
+        TERMINFO_DIRS=${pkgs.ghostty-bin.terminfo}/share/terminfo \
           infocmp -x xterm-ghostty > "$out"
       '';
     in
