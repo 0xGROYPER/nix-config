@@ -42,8 +42,6 @@ setup on every machine, nix-darwin for the Macs' machine level, and NixOS
 │   ├── ai-key         set its keys (in nix-secrets)
 │   └── ai-client-key  print the key its clients send
 ├── ssh/config         ~/.ssh/config
-├── docs/
-│   └── frozen-emacs.md  why the Emacs daemon is emacs-nox (the 2026-10-29 freezes)
 └── emacs/
     ├── init.el
     └── early-init.el
