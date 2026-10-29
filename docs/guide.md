@@ -47,28 +47,19 @@ M4, in its checkouts (`~/repos/…`); the other Macs are reached from there.
 
 ## Changing a Mac's setup
 
-Edit here on the M4, open a PR, merge, then switch each Mac:
+Edit here on the M4, open a PR, merge, then switch each Mac from the M4's
+up-to-date `master`:
 
-- **M4:** run the new generation's `activate` in Ghostty on the M4's own
-  screen. It needs macOS's App Management permission, which ssh and
-  Claude Code don't have.
-- **M2:** push `master` to it from the M4
-  (`git push m2:repos/nix-config master:refs/remotes/origin/master`),
-  fast-forward its checkout, then build and activate there over ssh. Store
-  paths copied from the M4 are refused (unsigned).
-- **Laptop:** the same, but it has no GitHub login, so the build points the
-  private inputs at local stand-ins:
+```
+scripts/switch-home m2       # over ssh
+scripts/switch-home laptop   # over ssh
+scripts/switch-home m4       # in Ghostty on the M4's own screen
+```
 
-  ```
-  nix build --no-link --print-out-paths --no-write-lock-file \
-    --override-input tinytrader-ops "git+file://$HOME/repos/tinytrader-ops?rev=<locked rev>" \
-    --override-input nix-secrets path:$HOME/.cache/no-secrets \
-    '.#homeConfigurations."daws@mac".activationPackage'
-  ```
-
-  then `HOME_MANAGER_BACKUP_EXT=hm-backup <result>/activate`.
-  (`~/.cache/no-secrets/flake.nix` is `{ outputs = _: { }; }`; Home Manager
-  uses neither input.)
+Another Mac gets `master` pushed to it and builds there. The M4's
+activation needs macOS's App Management permission, which Ghostty has and
+ssh and Claude Code don't: run from elsewhere, it builds, stops before
+changing anything, and prints the command to run there.
 
 ## Rules of thumb
 
