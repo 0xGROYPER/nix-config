@@ -22,10 +22,6 @@ Host m4 m2 mac-desktop laptop
     ControlPath ~/.ssh/cm-%r@%h:%p
     ControlPersist 10m
     ForwardAgent no
-    # Notice within about 45 s that the other end has gone (sleep, a dropped
-    # network), so a dead session ends instead of hanging.
-    ServerAliveInterval 15
-    ServerAliveCountMax 3
     # Tailscale authenticates the machines, so trust a host's key the first
     # time; a changed key is still refused.
     StrictHostKeyChecking accept-new

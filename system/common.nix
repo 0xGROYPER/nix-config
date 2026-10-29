@@ -44,9 +44,7 @@ in
 
   # SSH in from the other machines, by key only. nix-darwin's sshd takes raw
   # sshd_config lines; NixOS's takes the same settings as options (it would
-  # otherwise write PasswordAuthentication yes itself). Keepalives drop a
-  # connection whose other end has gone (a laptop asleep or off Wi-Fi) within
-  # about 45 s, rather than leaving its emacsclient -t and shells hanging.
+  # otherwise write PasswordAuthentication yes itself).
   services.openssh = {
     enable = true;
   }
@@ -57,8 +55,6 @@ in
           PasswordAuthentication no
           KbdInteractiveAuthentication no
           PermitRootLogin no
-          ClientAliveInterval 15
-          ClientAliveCountMax 3
         '';
       }
     else
@@ -67,8 +63,6 @@ in
           PasswordAuthentication = false;
           KbdInteractiveAuthentication = false;
           PermitRootLogin = "no";
-          ClientAliveInterval = 15;
-          ClientAliveCountMax = 3;
         };
       }
   );
