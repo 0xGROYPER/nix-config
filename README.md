@@ -83,6 +83,14 @@ home-manager switch --flake ~/repos/nix-config#daws@x200s       # the ThinkPad
 home-manager switch --flake ~/repos/nix-config#dawsonshay@mini  # the M4
 ```
 
+This works over ssh and from a Claude Code session too. Home Manager copies
+its apps into `~/Applications/Home Manager Apps` (for Spotlight), and once a
+*developer-signed* app has been launched, macOS's App Management protection
+blocks changes to it from anything without that permission (over ssh,
+nothing has it). So Ghostty, whose package is the developer's notarized
+build, is re-signed ad-hoc in its Nix build, like the apps Nix builds itself
+(`hosts/mac.nix`). Re-sign any other signed app the same way.
+
 Machine config on a Mac:
 
 ```sh
@@ -206,6 +214,7 @@ gh auth login
 # 6. Open a new Terminal window (only new login shells pick up nix-darwin's
 #    tools on PATH), then join the tailnet.
 sudo tailscale up
+
 ```
 
 A new machine needs its own entries in `flake.nix` (`homeConfigurations` and, for a Mac, `darwinConfigurations`), with its username and home directory. If a switch stops because a file already exists, add `-b backup` to move the old file aside.

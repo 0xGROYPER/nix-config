@@ -125,9 +125,25 @@ in
   # Option is Meta for Emacs. Over ssh it installs its terminfo on another
   # host that lacks it (or falls back to xterm-256color); on these Macs the
   # activation below has already put it where macOS's zsh looks.
+  #
+  # The app is ghostty-bin, the developer's notarized build, re-signed
+  # ad-hoc (the way Nix signs the apps it builds). Home Manager copies its
+  # apps into ~/Applications/Home Manager Apps (for Spotlight) and checks
+  # first that it may modify them. Once a developer-signed app has been
+  # launched, macOS's App Management protection lets only programs holding
+  # that permission modify it, and over ssh or from a Claude Code session
+  # nothing does (short of Full Disk Access for every remote login), so with
+  # the notarized build every switch there aborted. Ad-hoc signed, it's as
+  # modifiable as Emacs.app; it runs the same. Re-sign any other
+  # developer-signed app (a `-bin` package) the same way.
   programs.ghostty = {
     enable = true;
-    package = pkgs.ghostty-bin;
+    package = pkgs.ghostty-bin.overrideAttrs (old: {
+      postFixup = (old.postFixup or "") + ''
+        /usr/bin/codesign --force --deep --sign - --preserve-metadata=entitlements \
+          "$out/Applications/Ghostty.app"
+      '';
+    });
     settings = {
       macos-option-as-alt = true;
       shell-integration-features = "ssh-env,ssh-terminfo";
