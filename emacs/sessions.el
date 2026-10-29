@@ -13,20 +13,25 @@
 (defvar sessions--here nil
   "The Macs the last refresh found to be this one.")
 
+(defun sessions--parse ()
+  "The JSON from `sessions --json' in the current buffer."
+  (goto-char (point-min))
+  (json-parse-buffer :object-type 'alist :array-type 'list
+                     :null-object nil :false-object nil))
+
 (defun sessions--read ()
-  "Every Mac's entry from `sessions --json'."
+  "Every Mac's entry from `sessions --json', waiting for it."
   (with-temp-buffer
     (unless (zerop (call-process "sessions" nil t nil "--json"))
       (error "sessions --json failed: %s" (string-trim (buffer-string))))
-    (goto-char (point-min))
-    (json-parse-buffer :object-type 'alist :array-type 'list
-                       :null-object nil :false-object nil)))
+    (sessions--parse)))
 
-(defun sessions--entries ()
-  "Rows for `tabulated-list-entries', one per session (or unreachable Mac)."
+(defun sessions--entries (&optional macs)
+  "Rows for `tabulated-list-entries', one per session (or unreachable Mac).
+MACS is the list from `sessions --json'; without it, ask and wait."
   (let (rows)
     (setq sessions--here nil)
-    (dolist (m (sessions--read))
+    (dolist (m (or macs (sessions--read)))
       (let ((host (alist-get 'host m)))
         (when (alist-get 'here m) (push host sessions--here))
         (if (not (alist-get 'reachable m))
@@ -42,8 +47,38 @@
                     rows))))))
     (nreverse rows)))
 
+(defvar-local sessions--process nil
+  "The `sessions --json' run refreshing this buffer, while it runs.")
+
 (defun sessions--refresh ()
-  (setq tabulated-list-entries (sessions--entries)))
+  "Refresh the list in the background, so Emacs isn't held up meanwhile.
+Asking every Mac takes up to several seconds (ssh waits on one that's
+asleep), and the daemon serves every emacsclient: a synchronous call would
+freeze them all."
+  (let ((buf (current-buffer))
+        (out (generate-new-buffer " *sessions-json*")))
+    (when (process-live-p sessions--process) (delete-process sessions--process))
+    (setq mode-line-process ":refreshing")
+    (setq sessions--process
+          (make-process
+           :name "sessions" :buffer out :noquery t :connection-type 'pipe
+           :command '("sh" "-c" "exec sessions --json 2>/dev/null")
+           :sentinel
+           (lambda (proc _event)
+             (unless (process-live-p proc)
+               (unwind-protect
+                   (when (and (buffer-live-p buf)
+                              (eq proc (buffer-local-value 'sessions--process buf)))
+                     (with-current-buffer buf
+                       (setq sessions--process nil mode-line-process nil)
+                       (if (zerop (process-exit-status proc))
+                           (progn
+                             (setq tabulated-list-entries
+                                   (sessions--entries (with-current-buffer out (sessions--parse))))
+                             (tabulated-list-print t))
+                         (message "sessions --json failed (exit %d)" (process-exit-status proc)))
+                       (force-mode-line-update)))
+                 (kill-buffer out))))))))
 
 (defun sessions--command (host cmd)
   "CMD as a shell command run on HOST: here, or over ssh with a terminal."
@@ -128,9 +163,9 @@ after it has stopped in its terminal (otherwise it starts a copy)."
   (interactive)
   (let ((buf (get-buffer-create "*sessions*")))
     (with-current-buffer buf
-      (sessions-mode)
-      (sessions--refresh)
-      (tabulated-list-print))
+      (unless (derived-mode-p 'sessions-mode) (sessions-mode))
+      (tabulated-list-print t)
+      (sessions--refresh))
     (pop-to-buffer-same-window buf)))
 
 (provide 'sessions)

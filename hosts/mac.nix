@@ -32,16 +32,19 @@ let
     runtimeInputs = [ pkgs.jq ];
     text = builtins.readFile ../scripts/sessions/sessions-deliver.sh;
   };
-  # A Dock app opening a window onto the Emacs daemon (emacsclient -c),
-  # starting the daemon if it isn't running. Closing its window leaves the
-  # daemon, its buffers and sessions running. Home Manager puts it in
-  # ~/Applications/Home Manager Apps.
+  # The Emacs daemon is a terminal-only build (emacs-nox) with the same
+  # packages. The GUI (NS) build as a daemon with only `emacsclient -t`
+  # frames sometimes misses the wakeup from its fd-watching thread and
+  # sleeps in Cocoa's event loop: every client, new or open, freezes until a
+  # Cocoa event happens to arrive. emacs-nox waits with plain pselect. It can't open GUI frames, so the GUI is Emacs.app,
+  # an Emacs of its own (it leaves the server to the daemon, emacs/init.el).
   emacs = config.programs.emacs.finalPackage;
+  emacs-daemon = (pkgs.emacsPackagesFor pkgs.emacs-nox).emacsWithPackages config.programs.emacs.extraPackages;
+  # A Dock app opening the GUI Emacs (or bringing it forward).
   emacs-client-launcher = pkgs.writeCBin "emacs-client" ''
     #include <unistd.h>
     int main(void) {
-      execl("${emacs}/bin/emacsclient", "emacsclient", "-c", "-n", "-a", "",
-            "-e", "(select-frame-set-input-focus (selected-frame))", (char *) 0);
+      execl("/usr/bin/open", "open", "-a", "${emacs}/Applications/Emacs.app", (char *) 0);
       return 127;
     }
   '';
@@ -81,9 +84,10 @@ in
 
   # Emacs as a daemon from login, kept running, so its buffers outlast any
   # terminal or connection: `ssh HOST`, then `emacsclient -t`, from anywhere.
-  # A GUI frame is `emacsclient -c`. launchd gives no shell's PATH, so it gets
-  # a terminal's here (claude, the nix tools). While another Emacs holds the
-  # server (a GUI Emacs started on its own), it retries each minute.
+  # It's terminal-only (emacs-daemon, above), so no `emacsclient -c`.
+  # launchd gives no shell's PATH, so it gets a terminal's here (claude, the
+  # nix tools). While another Emacs holds the server (a GUI Emacs started on
+  # its own), it retries each minute.
   # A switch updates emacs/sessions.el; a running Emacs reloads it then, so
   # M-x sessions needs no restart. Nothing else is reloaded.
   home.activation.reloadEmacsSessions = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
@@ -94,7 +98,7 @@ in
     enable = true;
     config = {
       ProgramArguments = [
-        "${config.programs.emacs.finalPackage}/bin/emacs"
+        "${emacs-daemon}/bin/emacs"
         "--fg-daemon"
       ];
       EnvironmentVariables.PATH = builtins.concatStringsSep ":" [
