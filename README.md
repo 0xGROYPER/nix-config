@@ -41,6 +41,7 @@ Mac): [docs/guide.md](docs/guide.md).
 │   └── cliproxyapi.nix  CLIProxyAPI's release binary, pinned by checksum
 ├── scripts/
 │   ├── switch         apply a Mac's nix-darwin config
+│   ├── switch-home    apply a Mac's Home Manager config (m4, m2, laptop)
 │   ├── host-identity  keep a Mac's SSH host keys across a wipe (in nix-secrets)
 │   ├── ai-login       sign the AI endpoint in to a subscription
 │   ├── ai-key         set its keys (in nix-secrets)

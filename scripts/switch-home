@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# Apply Home Manager on a Mac from this checkout's master: the one way to
+# switch any Mac's user setup, run from the M4.
+#   scripts/switch-home m4       this Mac (dawsonshay@mini)
+#   scripts/switch-home m2       over ssh (daws@mac)
+#   scripts/switch-home laptop   over ssh (daws@mac)
+#
+# Another Mac gets master pushed to its checkout (it may have no GitHub
+# login), then builds and activates there: store paths copied from here are
+# refused, unsigned. Without GitHub access it points the private inputs,
+# which Home Manager doesn't use, at local stand-ins.
+#
+# The M4's activation needs macOS's App Management permission, which
+# Ghostty has and ssh and Claude Code don't: run this in Ghostty on the
+# M4's own screen. Elsewhere it builds, then says what to run there.
+set -euo pipefail
+flake="$(cd "$(dirname "$0")/.." && pwd)"
+nixbin=/nix/var/nix/profiles/default/bin
+host="${1:?usage: scripts/switch-home m4|m2|laptop}"
+
+cd "$flake"
+git fetch -q origin
+[ "$(git rev-parse HEAD)" = "$(git rev-parse origin/master)" ] && [ -z "$(git status --porcelain --untracked-files=no)" ] ||
+  { echo "check out master, clean and up to date with origin, first" >&2; exit 1; }
+
+case "$host" in
+m4 | mini)
+  gen="$("$nixbin/nix" build --no-link --print-out-paths '.#homeConfigurations."dawsonshay@mini".activationPackage')"
+  echo "built $gen"
+  if ! HOME_MANAGER_BACKUP_EXT=hm-backup PATH="$nixbin:$PATH" "$gen/activate"; then
+    echo >&2
+    echo "Activation failed. If it was App Management, run this in Ghostty on the M4's screen:" >&2
+    echo "  PATH=$nixbin:\$PATH HOME_MANAGER_BACKUP_EXT=hm-backup $gen/activate" >&2
+    exit 1
+  fi
+  ;;
+m2 | laptop)
+  git push -q --no-verify "${host}:repos/nix-config" master:refs/remotes/origin/master
+  ssh "$host" 'cd ~/repos/nix-config && git checkout -q master && git merge -q --ff-only origin/master'
+  overrides=""
+  if ! ssh "$host" 'git ls-remote -q https://github.com/dawson-shay/tinytrader-ops HEAD' >/dev/null 2>&1; then
+    rev="$(jq -r '.nodes["tinytrader-ops"].locked.rev' flake.lock)"
+    overrides="--no-write-lock-file --override-input tinytrader-ops \"git+file://\$HOME/repos/tinytrader-ops?rev=$rev\" --override-input nix-secrets path:\$HOME/.cache/no-secrets"
+    ssh "$host" "git -C ~/repos/tinytrader-ops cat-file -e $rev 2>/dev/null" ||
+      git -C ~/repos/tinytrader-ops push -q --no-verify "${host}:repos/tinytrader-ops" "$rev:refs/remotes/origin/main"
+    ssh "$host" 'mkdir -p ~/.cache/no-secrets && echo "{ outputs = _: { }; }" > ~/.cache/no-secrets/flake.nix'
+    echo "$host has no GitHub access: building with local stand-ins for the private inputs"
+  fi
+  ssh "$host" "cd ~/repos/nix-config && export PATH=$nixbin:\$PATH &&
+    gen=\$(nix build --no-link --print-out-paths $overrides '.#homeConfigurations.\"daws@mac\".activationPackage') &&
+    echo built \$gen && HOME_MANAGER_BACKUP_EXT=hm-backup \$gen/activate"
+  ;;
+*)
+  echo "unknown Mac: $host (m4, m2 or laptop)" >&2
+  exit 1
+  ;;
+esac
+echo "$host: switched to $(git log --oneline -1)"
