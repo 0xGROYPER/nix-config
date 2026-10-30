@@ -50,6 +50,10 @@ in
     pkgs.julia-bin # the upstream build
     pkgs.ollama # local models; `ollama serve` when wanted
     pkgs.zed-editor
+    # mosh: a terminal session that survives sleep and network changes
+    # (`mosh m4 -- emacsclient -t`). It logs in with ssh, then talks UDP
+    # (60000-61000) over the tailnet; mosh-server must be on each Mac's PATH.
+    pkgs.mosh
     sessions
     sessions-here
     sessions-deliver
@@ -182,5 +186,17 @@ in
       save = 100000;
       share = true;
     };
+    # Before every prompt, switch off the terminal modes a full-screen
+    # program turns on (mouse reporting, focus events, the kitty keyboard
+    # protocol). One that dies without switching them off (a dropped ssh,
+    # Emacs or claude attach killed) left Ghostty sending touchpad moves and
+    # focus changes as typed text into this shell until the tab was closed.
+    initContent = ''
+      _tt_reset_tty_modes() {
+        printf '\e[?1000l\e[?1002l\e[?1003l\e[?1005l\e[?1006l\e[?1015l\e[?1004l\e[=0;1u'
+      }
+      autoload -Uz add-zsh-hook
+      add-zsh-hook precmd _tt_reset_tty_modes
+    '';
   };
 }
