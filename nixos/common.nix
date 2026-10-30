@@ -4,13 +4,18 @@
 # Macs share too (tools, Tailscale, SSH by key only, sops-nix's key, the
 # timezone) is in system/common.nix; this is what's Linux-only:
 #
-#   Nix with flakes; Docker natively (no VM, unlike Colima on the Macs);
-#   never sleeps.
+#   Nix with flakes; Ghostty's terminfo; Docker natively (no VM, unlike
+#   Colima on the Macs); never sleeps.
 #
 # Hosts that use it also import sops-nix.nixosModules.sops (flake.nix).
-{ ... }:
+{ pkgs, ... }:
 {
   imports = [ ../system/common.nix ];
+
+  # Ghostty's terminfo, so `ssh host` from Ghostty (plain ssh, TERM=xterm-ghostty;
+  # hosts/mac.nix) gets a working terminal here. The Macs compile their own copy
+  # at each Home Manager switch, for macOS's older ncurses (hosts/mac.nix).
+  environment.systemPackages = [ pkgs.ghostty.terminfo ];
 
   # NixOS manages Nix itself here (on the Macs, Determinate Nix does).
   nix.settings.experimental-features = [
