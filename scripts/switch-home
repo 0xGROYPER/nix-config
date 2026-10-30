@@ -41,8 +41,11 @@ m2 | laptop)
   if ! ssh "$host" 'git ls-remote -q https://github.com/dawson-shay/tinytrader-ops HEAD' >/dev/null 2>&1; then
     rev="$(jq -r '.nodes["tinytrader-ops"].locked.rev' flake.lock)"
     overrides="--no-write-lock-file --override-input tinytrader-ops \"git+file://\$HOME/repos/tinytrader-ops?rev=$rev\" --override-input nix-secrets path:\$HOME/.cache/no-secrets"
-    ssh "$host" "git -C ~/repos/tinytrader-ops cat-file -e $rev 2>/dev/null" ||
+    if ! ssh "$host" "git -C ~/repos/tinytrader-ops cat-file -e $rev 2>/dev/null"; then
+      # The M4's checkout may not have it yet (a fetch touches no files).
+      git -C ~/repos/tinytrader-ops cat-file -e "$rev" 2>/dev/null || git -C ~/repos/tinytrader-ops fetch -q origin
       git -C ~/repos/tinytrader-ops push -q --no-verify "${host}:repos/tinytrader-ops" "$rev:refs/remotes/origin/main"
+    fi
     ssh "$host" 'mkdir -p ~/.cache/no-secrets && echo "{ outputs = _: { }; }" > ~/.cache/no-secrets/flake.nix'
     echo "$host has no GitHub access: building with local stand-ins for the private inputs"
   fi
