@@ -14,6 +14,14 @@
   # daemon fighting it for the network.
   services.tailscale.enable = lib.mkForce false;
 
+  # On mains power it never sleeps (the display still does), so ssh and
+  # Emacs sessions to the M4 aren't cut every minute; on battery macOS's
+  # own setting stands. nix-darwin's power.sleep sets both, so this is pmset
+  # for AC only, applied at each switch.
+  system.activationScripts.postActivation.text = lib.mkAfter ''
+    /usr/bin/pmset -c sleep 0
+  '';
+
   # sudo in a terminal here takes Touch ID (in a tmux too). Not over ssh:
   # the sensor is only for sudo on the Mac in front of you.
   security.pam.services.sudo_local = {
