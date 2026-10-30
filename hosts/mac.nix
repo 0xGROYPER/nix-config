@@ -122,9 +122,15 @@ in
 
   # Ghostty, the terminal: GPU-rendered, true colour, mouse and the kitty
   # graphics protocol, so `ssh m4` then `emacsclient -t` is close to the GUI.
-  # Option is Meta for Emacs. Over ssh it installs its terminfo on another
-  # host that lacks it (or falls back to xterm-256color); on these Macs the
-  # activation below has already put it where macOS's zsh looks.
+  # Option is Meta for Emacs. ssh is plain ssh: TERM=xterm-ghostty goes to
+  # the other host, and these Macs have its terminfo from the activation
+  # below, so Emacs there gets 24-bit colour and the rest. No ssh shell
+  # integration: ssh-terminfo wraps every `ssh` to install the terminfo on
+  # first contact, and ran an `ssh host 'command'` inside that step with its
+  # output hidden; ssh-env sets TERM=xterm-256color, and the COLORTERM it
+  # sends with it is dropped by sshd (AcceptEnv is LANG and LC_* only), which
+  # leaves 256 colours. On a host without the terminfo:
+  # export TERM=xterm-256color there.
   #
   # The app is ghostty-bin, the developer's notarized build, re-signed
   # ad-hoc (the way Nix signs the apps it builds). Home Manager copies its
@@ -146,7 +152,7 @@ in
     });
     settings = {
       macos-option-as-alt = true;
-      shell-integration-features = "ssh-env,ssh-terminfo";
+      shell-integration-features = "no-ssh-env,no-ssh-terminfo";
       mouse-hide-while-typing = true;
       window-save-state = "always";
     };
