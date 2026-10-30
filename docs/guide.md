@@ -17,7 +17,10 @@ M4, in its checkouts (`~/repos/…`); the other Macs are reached from there.
 ## Emacs
 
 - **The shared Emacs** is the M4's daemon (terminal-only):
-  `ssh -t m4 emacsclient -t`, from Ghostty anywhere. `C-x C-c` closes your
+  `mosh m4 -- emacsclient -t`, from Ghostty anywhere. mosh survives the
+  laptop sleeping and changing networks; `ssh -t m4 emacsclient -t` works
+  too, but dies with the connection. Keep plain `ssh` for one-off commands,
+  copying files and TRAMP. `C-x C-c` closes your
   frame; the daemon, its buffers and sessions keep running. Every frame,
   from any Mac, is the same Emacs.
 - **A GUI Emacs** (images, native windows) is Emacs.app on the Mac in front
@@ -62,6 +65,10 @@ ssh and Claude Code don't: run from elsewhere, it builds, stops before
 changing anything, and prints the command to run there.
 
 ## Rules of thumb
+
+- A hung ssh: Return, `~`, `.` disconnects it. zsh switches off mouse and
+  focus reporting at every prompt, so a program that died with them on
+  can't leave the tab typing touchpad moves.
 
 - No builds or deploys 09:25–16:20 New York time on trading days: the M4
   runs the live services. A push to tinytrader-ops runs checks on the M4 too.
